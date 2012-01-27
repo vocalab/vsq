@@ -497,5 +497,6 @@ if __name__ == '__main__':
 						boinrxp.match(second['phonetic'])):
 					plist.append(first['lyrics']+second['lyrics']+',')
 		print ''.join(plist)
+	print "git test"
 
 
