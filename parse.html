@@ -11,9 +11,11 @@
     <![endif]-->
   </head>
   <body>
-    <p>{{ greeting }}</p>
-    <form action="/parse" enctype="multipart/form-data" method="post">
-      <input type="file" name="file" />
+    <p>{{ lyrics }}</p>
+    <form action="/download" method="post">
+      <input type="checkbox" name="rule[]" />
+      <input type="checkbox" name="rule[]" />
+      <input type="checkbox" name="rule[]" />
       <input type="submit" value="submit">
     </form>
   </body>
