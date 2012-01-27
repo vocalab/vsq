@@ -17,13 +17,17 @@ class MainPage(webapp.RequestHandler):
 class ParserPage(webapp.RequestHandler):
     def post(self):
         data = self.request.get('file')
+        file_name = self.request.body_file.vars['file'].filename
         editor = VSQEditor(string = data)
-        lyric = editor.get_anotes(s=6800)[0]['lyrics']
-        self.response.out.write('<pre>' + lyric + '</pre>')
+        self.response.headers['Content-Type'] = "application/x-vsq; charset=Shift_JIS"
+        self.response.headers['Content-disposition'] = "filename=" + file_name.encode("utf-8")
+        self.response.out.write(editor.unparse())
+        #lyric = editor.get_anotes(s=6800)[0]['lyrics']
+        #self.response.out.write('<pre>' + lyric + '</pre>')
 
 application = webapp.WSGIApplication(
                                         [('/', MainPage),
-                                         ('/parse', ParserPage)],
+                                         ('/trans', ParserPage)],
                                         debug=True)
 
 def main():
