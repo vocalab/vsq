@@ -3,7 +3,8 @@ import re
 from struct import *
 import sys
 import codecs
-#sys.stdout = codecs.EncodedFile(sys.stdout, 'utf_8')
+import pprint
+sys.stdout = codecs.EncodedFile(sys.stdout, 'utf_8')
 
 
 __author__ = "大野誠<makoto.pingpong1016@gmail.com>"
@@ -14,20 +15,16 @@ __version__ = 0.01
 
 def stu(s):
 	"""shift_jisの文字列をutf-8に変換する（表示の時以外は使わないでね！）
-		vsqファイルの日本語（shift-jis）を自分の環境（utf-8）で表示できるようにする。
 	"""
 	return s.decode('shift_jis').encode('utf-8')
 
 
 def pp(obj):
 	"""オブジェクトを綺麗に表示する。
-		現時点では、リストを改行して表示するのみ。
 	"""
-	if isinstance(obj, list):
-		for o in obj:
-			pp(o)
-	else:
-		print obj
+	pp = pprint.PrettyPrinter(indent=4, width=180)
+	str = pp.pformat(obj)
+	return str
 
 class FakeFile(object):
 	"""文字列アクセスをファイルアクセスのように
@@ -348,7 +345,7 @@ class VSQEditor(object):
 					 'lyrics': d['lyrics'],
 					 'phonetic': d['phonetic'],
 					 'note': int(e['Note#']),
-					 'end_time': int(event['time']+e['Length'])}
+					 'end_time': int(event['time'])+int(e['Length'])}
 				anoteEvents.append(es)
 		return anoteEvents
 
@@ -414,7 +411,7 @@ class VSQEditor(object):
 		if s==None: s = self.master_track['startTime']
 		if e==None: e = self.master_track['endTime']
 		return [ev for ev in self.current_track[ptype]
-					   if s <= ev['start_time'] <= e]
+					   if s <= ev['time'] <= e]
 
 	def get_pitch_curve(self, s=None, e=None):
 		"""sからeまでのピッチ曲線を取得する。
@@ -435,6 +432,14 @@ class VSQEditor(object):
 	def set_dynamics_curve(self, curve, s=None, e=None):
 		"""sからeまでのダイナミクス曲線をcurveで置き換える。"""
 		return self.__set_param_curve('DynamicsBPList', curve, s, e)
+
+	def set_anote_length(self, anotes, length):
+		events = self.current_track['Events']
+		for anote in anotes:
+			events[anote['id']]['length'] = length
+			anote['end_time'] = anote['start_time'] + length
+
+		
 		
 	def select_track(self, track_num):
 		"""操作対象トラックを変更する。"""
@@ -456,13 +461,18 @@ class VSQEditor(object):
 '''
 if __name__ == '__main__':
 	editor = VSQEditor(string=open('test.vsq', 'r').read())
-	enable = [3,4]
-	boinrxp = re.compile("[a|i|M|e|o]")
+	enable = [4]
+	boinrxp = re.compile("[aiMeo]")
+	nnrxp = re.compile("[n(N['\\]?)]")
 	
 	#1
 	if 1 in enable: 
-		pp("anotes:")
-		pp(editor.get_anotes(s=6800))
+		print pp("anotes:")
+		anotes = editor.get_anotes(6800,7100)
+		print pp(anotes)
+		editor.set_anote_length(anotes, 10)
+		print pp(anotes)
+		
 		pp("\ndynamics:")
 		pp(editor.get_dynamics_curve(6800,7100))
 		pp("\npitchbend:")
@@ -478,24 +488,27 @@ if __name__ == '__main__':
 		
 	#3
 	if 3 in enable:
-		print editor.unparse()
+		open('out.vsq','w').write(editor.unparse())
+		
 		
 	#4
 	if 4 in enable:
 		pp('lyrics:')
 		anotes = editor.get_anotes()
-		lyrics = [anote['phonetic'] for anote in anotes]
-		pp(''.join(lyrics))
+		lyrics = [anote['lyrics'] for anote in anotes]
+		print stu(''.join(lyrics))
 		pp('phonetic:')
 		plist = []
 		for i, anote in enumerate(anotes):
 			if (not boinrxp.match(anote['phonetic']) and
+					not nnrxp.match(anote['phonetic']) and
 					not i is len(anotes)-1):
 				first = anote	
+				si, bo = first['phonetic'].split(' ')
 				second = anotes[i+1]
 				if(second['start_time'] - first['end_time'] < 20 and
-						boinrxp.match(second['phonetic'])):
+						second['phonetic'] == bo):
 					plist.append(first['lyrics']+second['lyrics']+',')
-		print ''.join(plist)
+		print stu(''.join(plist))
 
 
