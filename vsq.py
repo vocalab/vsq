@@ -509,6 +509,6 @@ if __name__ == '__main__':
 				if(second['start_time'] - first['end_time'] < 20 and
 						second['phonetic'] == bo):
 					plist.append(first['lyrics']+second['lyrics']+',')
-		print stu(''.join(plist))
+		print ''.join(plist)
 
 
