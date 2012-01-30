@@ -510,5 +510,6 @@ if __name__ == '__main__':
 						second['phonetic'] == bo):
 					plist.append(first['lyrics']+second['lyrics']+',')
 		print ''.join(plist)
+	print "git test3"
 
 
