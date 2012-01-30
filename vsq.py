@@ -24,7 +24,7 @@ def pp(obj):
 	"""
 	pp = pprint.PrettyPrinter(indent=4, width=180)
 	str = pp.pformat(obj)
-	return str
+	print str
 
 class FakeFile(object):
 	"""文字列アクセスをファイルアクセスのように
@@ -80,16 +80,16 @@ class VSQEditor(object):
 			return {}
 		header = {'size': unpack('>i', self._f.read(4))[0],
 				  'format': unpack('>h', self._f.read(2))[0],
-				  'trackNum': unpack('>h', self._f.read(2))[0],
-				  'timeDiv': unpack('>h', self._f.read(2))[0]}
+				  'track_num': unpack('>h', self._f.read(2))[0],
+				  'time_div': unpack('>h', self._f.read(2))[0]}
 		return header
 
 	def __unparse_header(self):
 		binary = 'MThd' + pack('>ihhh',
 							   self.header['size'],
 							   self.header['format'],
-							   self.header['trackNum'],
-							   self.header['timeDiv'])
+							   self.header['track_num'],
+							   self.header['time_div'])
 		return binary
 
 	def __parse_master_track(self):
@@ -133,7 +133,7 @@ class VSQEditor(object):
 				if dtime == 0:
 					nn = metaevent['contents'][0]
 					dd = 2 ** metaevent['contents'][1]
-					premtime = nn/float(dd)*16*self.header['timeDiv']
+					premtime = nn/float(dd)*16*self.header['time_div']
 					master_track['startTime'] = premtime
 			dtime = self.__get_dtime()
 			mevent = unpack('BBB', self._f.read(3))
@@ -254,7 +254,7 @@ class VSQEditor(object):
 		track['AnoteEvents'] = self.__create_anote_events(track)
 		last_anote = track['AnoteEvents'][-1]
 		self.master_track['endTime'] = (last_anote['end_time']+
-										self.header['timeDiv']*4)
+										self.header['time_div']*4)
 		return track
 
 	def __unparse_normal_track(self, track): 
@@ -356,7 +356,7 @@ class VSQEditor(object):
 		self.header = self.__parse_header()
 		self.master_track = self.__parse_master_track()
 		self.normal_tracks = []
-		for i in range(self.header['trackNum']-1):
+		for i in range(self.header['track_num']-1):
 			track = self.__parse_normal_track()
 			self.normal_tracks.append(track)       
 		self.select_track(0)
@@ -443,7 +443,7 @@ class VSQEditor(object):
 		
 	def select_track(self, track_num):
 		"""操作対象トラックを変更する。"""
-		if track_num < self.header['trackNum']:
+		if track_num < self.header['track_num']:
 			self.current_track = self.normal_tracks[track_num]
 			return True
 		else:
@@ -458,20 +458,19 @@ class VSQEditor(object):
 任意のものに変更する。
 3.パース結果をアンパースし、outtest.vsqとして出力する。
 4.歌詞を表示する。
+5.音程の相対値を表示する。
 '''
 if __name__ == '__main__':
 	editor = VSQEditor(string=open('test.vsq', 'r').read())
-	enable = [4]
+	enable = [4,5]
 	boinrxp = re.compile("[aiMeo]")
 	nnrxp = re.compile("[n(N['\\]?)]")
 	
 	#1
 	if 1 in enable: 
-		print pp("anotes:")
+		pp("anotes:")
 		anotes = editor.get_anotes(6800,7100)
-		print pp(anotes)
-		editor.set_anote_length(anotes, 10)
-		print pp(anotes)
+		pp(anotes)
 		
 		pp("\ndynamics:")
 		pp(editor.get_dynamics_curve(6800,7100))
@@ -493,23 +492,20 @@ if __name__ == '__main__':
 		
 	#4
 	if 4 in enable:
-		pp('lyrics:')
+		print("\nlyrics:")
 		anotes = editor.get_anotes()
 		lyrics = [anote['lyrics'] for anote in anotes]
 		print stu(''.join(lyrics))
-		pp('phonetic:')
-		plist = []
-		for i, anote in enumerate(anotes):
-			if (not boinrxp.match(anote['phonetic']) and
-					not nnrxp.match(anote['phonetic']) and
-					not i is len(anotes)-1):
-				first = anote	
-				si, bo = first['phonetic'].split(' ')
-				second = anotes[i+1]
-				if(second['start_time'] - first['end_time'] < 20 and
-						second['phonetic'] == bo):
-					plist.append(first['lyrics']+second['lyrics']+',')
-		print ''.join(plist)
-	print "git test3"
+	
+	#5
+	if 5 in enable:
+		print("\nrelative_notes:")
+		anotes = editor.get_anotes()
+		relative_notes = [0] + [anote['note'] - anotes[i]['note'] 
+									for i, anote in enumerate(anotes[1:])]
+		print relative_notes
+		
+
+
 
 
