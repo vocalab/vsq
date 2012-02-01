@@ -8,5 +8,11 @@ handlers:
   static_files: favicon.ico
   upload: favicon\.ico
 
+- url: /stylesheets
+  static_dir: stylesheets
+
+- url: /javascripts
+  static_dir: javascripts
+
 - url: /.*
   script: main.py

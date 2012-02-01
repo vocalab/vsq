@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 import cgi
 from google.appengine.ext.webapp import template
@@ -9,7 +11,7 @@ from vsq import VSQEditor
 class MainPage(webapp.RequestHandler):
     def get(self):
         template_values = {
-                'greeting': 'Hello World'
+                'greeting': 'VSQファイルを解析し、加工するプログラムです'
                 }
 
         path = os.path.join(os.path.dirname(__file__), 'index.html')
@@ -35,6 +37,8 @@ class ParserPage(webapp.RequestHandler):
 
 class DownloadPage(webapp.RequestHandler):
     def post(self):
+        applied_range = self.request.get_all('range')
+        str = "".join(applied_range)
         data = memcache.get("vsq_data")
         file_name = memcache.get("vsq_name")
         self.response.headers['Content-Type'] = "application/x-vsq; charset=Shift_JIS"
