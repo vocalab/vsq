@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
 from struct import *
-import sys
-import codecs
 import pprint
-sys.stdout = codecs.EncodedFile(sys.stdout, 'utf_8')
-
 
 __author__ = "大野誠<makoto.pingpong1016@gmail.com>"
 __status__ = "test"
@@ -38,6 +34,11 @@ class FakeFile(object):
 		string = self._string[self._index:self._index+byte]
 		self._index += byte
 		return string
+
+
+class VSQRule(object):
+	def __init__(self, **param):
+		print param
 
 
 class VSQEditor(object):
@@ -375,7 +376,8 @@ class VSQEditor(object):
 		else:
 			return binary
 		
-	def __set_param_curve(self, ptype, curve, s, e):
+	def __set_param_curve(self, ptype, curve, s, e, stretch):
+		if not curve: return False
 		start_time = self.master_track['startTime']
 		end_time = self.master_track['endTime']
 		if s is None or s <= start_time: s = start_time + 1 	
@@ -425,13 +427,13 @@ class VSQEditor(object):
 		"""
 		return self.__get_param_curve('DynamicsBPList', s, e)
 
-	def set_pitch_cureve(self, curve, s=None, e=None):
+	def set_pitch_curve(self, curve, s=None, e=None, stretch=None):
 		"""sからeまでのピッチ曲線をcurveで置き換える。"""
-		return self.__set_param_curve('PitchBendBPList', curve, s, e)
+		return self.__set_param_curve('PitchBendBPList', curve, s, e, stretch)
 		
-	def set_dynamics_curve(self, curve, s=None, e=None):
+	def set_dynamics_curve(self, curve, s=None, e=None, stretch=None):
 		"""sからeまでのダイナミクス曲線をcurveで置き換える。"""
-		return self.__set_param_curve('DynamicsBPList', curve, s, e)
+		return self.__set_param_curve('DynamicsBPList', curve, s, e, stretch)
 
 	def set_anote_length(self, anotes, length):
 		events = self.current_track['Events']
@@ -449,6 +451,57 @@ class VSQEditor(object):
 		else:
 			return False
 
+	def apply_rule(self, rule):
+		anotes = self.get_anotes()
+		lyrics = [anote['lyrics'] for anote in anotes]
+		lyrics = unicode(''.join(lyrics), 'shift-jis')
+		smallrxp = re.compile(u"[ぁぃぅぇぉゃゅょ]")
+		rulerxp = re.compile(rule['regexp'])
+
+		candidates = []
+		def is_connected(anotes):
+			if len(anotes) <= 1: return False
+			for i, anote in enumerate(anotes[1:]):
+				if anote['start_time'] - anotes[i]['end_time'] > 50:
+					return False
+			return True
+
+		def check_notes(notes, anotes):
+			relative_notes = [0] + [anote['note'] - anotes[i]['note'] 
+									for i, anote in enumerate(anotes[1:])]
+			return relative_notes == notes
+
+		check_len = lambda x, y: len(x)==len(y)
+
+		for match in rulerxp.finditer(lyrics):
+			s = match.start()
+			e = match.end()
+			s_index = s - len(smallrxp.findall(lyrics[:s]))
+			e_index = e - len(smallrxp.findall(lyrics[:e]))
+			match_anotes = anotes[s_index:e_index]
+			if rule['connect'] and not is_connected(match_anotes):
+				continue
+			if (not check_len(rule['dyn_curves'], match_anotes) or
+				not check_len(rule['pit_curves'], match_anotes)):
+				continue
+			if (rule['relative_notes'] and 
+				not check_notes(rule['relative_notes'],match_anotes)):
+				continue
+			else:
+				candidates.append(match_anotes)
+		print candidates
+		for c_anotes in candidates:
+			for i, c_anote in enumerate(c_anotes):
+				dyn_curve = rule['dyn_curves'][i]
+				pit_curve = rule['dyn_curves'][i]
+				self.set_dynamics_curve(dyn_curve['curve'],
+									c_anote['start_time'],
+									c_anote['end_time'],
+									dyn_curve['stretch'])
+				self.set_pitch_curve(pit_curve['curve'],
+									c_anote['start_time'],
+									c_anote['end_time'],
+									pit_curve['stretch'])
 
 '''
 テストコード:
@@ -462,48 +515,59 @@ class VSQEditor(object):
 '''
 if __name__ == '__main__':
 	editor = VSQEditor(string=open('test.vsq', 'r').read())
-	enable = [4,5]
-	boinrxp = re.compile("[aiMeo]")
-	nnrxp = re.compile("[n(N['\\]?)]")
+	enable = [6,3]
 	
-	#1
+	#1.音符情報、dynamics,pitchbendカーブを表示
 	if 1 in enable: 
-		pp("anotes:")
+		print "anotes:"
 		anotes = editor.get_anotes(6800,7100)
-		pp(anotes)
+		print pp(panotes)
 		
-		pp("\ndynamics:")
-		pp(editor.get_dynamics_curve(6800,7100))
-		pp("\npitchbend:")
-		pp(editor.get_pitch_curve(6800,7100))
-		pp('')
+		print "\ndynamics:"
+		print pp(editor.get_dynamics_curve(6800,7100))
+		print "\npitchbend:"
+		print pp(editor.get_pitch_curve(6800,7100))
 	
-	#2
+	#2.範囲を選択してカーブを編集
 	if 2 in enable:
-		editor.set_pitch_cureve(range(-5000,5000,1),850,6200)
+		editor.set_pitch_curve(range(-5000,5000,1),850,6200)
 		editor.set_dynamics_curve(range(1,100)+range(100,1,-1),20800,35200)
 		editor.set_dynamics_curve([0],30800,35200)
 		editor.set_dynamics_curve([128],32000,32000)
 		
-	#3
-	if 3 in enable:
-		open('out.vsq','w').write(editor.unparse())
-		
-		
-	#4
+	#4.歌詞を表示
 	if 4 in enable:
 		print("\nlyrics:")
 		anotes = editor.get_anotes()
 		lyrics = [anote['lyrics'] for anote in anotes]
-		print stu(''.join(lyrics))
+		print unicode(''.join(lyrics),'shift-jis')
 	
-	#5
+	#5.相対音階を表示（前のノートとの差をとる）
 	if 5 in enable:
 		print("\nrelative_notes:")
 		anotes = editor.get_anotes()
 		relative_notes = [0] + [anote['note'] - anotes[i]['note'] 
 									for i, anote in enumerate(anotes[1:])]
 		print relative_notes
+	
+	#6.ルール適用テスト
+	if 6 in enable:
+		dyn_curves = [{"curve":range(0,100),"stretch":None},
+				{"curve":range(30,0,-1)+range(0,100),"stretch":None},
+				{"curve":range(100,0,-1),"stretch":None}]
+		pit_curves = [{"curve":None,"stretch":None},
+				{"curve":None,"stretch":None},
+				{"curve":None,"stretch":None}]
+		rule = {"regexp":u".さn",
+				"connect":True,
+				"relative_notes":[0,-2,0],
+				"dyn_curves":dyn_curves,
+				"pit_curves":pit_curves}
+		editor.apply_rule(rule)
+
+	#3.編集結果をunparseして書きこむ
+	if 3 in enable:
+		editor.unparse('out.vsq')	
 		
 
 
