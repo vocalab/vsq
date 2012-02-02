@@ -5,14 +5,8 @@ import pprint
 
 __author__ = "大野誠<makoto.pingpong1016@gmail.com>"
 __status__ = "test"
-__date__ = "2012/01/22"
+__date__ = "2012/02/02"
 __version__ = 0.01
-
-
-def stu(s):
-	"""shift_jisの文字列をutf-8に変換する（表示の時以外は使わないでね！）
-	"""
-	return s.decode('shift_jis').encode('utf-8')
 
 
 def pp(obj):
@@ -429,19 +423,25 @@ class VSQEditor(object):
 
 	def set_pitch_curve(self, curve, s=None, e=None, stretch=None):
 		"""sからeまでのピッチ曲線をcurveで置き換える。"""
-		return self.__set_param_curve('PitchBendBPList', curve, s, e, stretch)
+		return self.__set_param_curve('PitchBendBPList',
+										curve,
+										s,
+										e,
+										stretch)
 		
 	def set_dynamics_curve(self, curve, s=None, e=None, stretch=None):
 		"""sからeまでのダイナミクス曲線をcurveで置き換える。"""
-		return self.__set_param_curve('DynamicsBPList', curve, s, e, stretch)
+		return self.__set_param_curve('DynamicsBPList',
+										curve,
+										s,
+										e,
+										stretch)
 
 	def set_anote_length(self, anotes, length):
 		events = self.current_track['Events']
 		for anote in anotes:
 			events[anote['id']]['length'] = length
 			anote['end_time'] = anote['start_time'] + length
-
-		
 		
 	def select_track(self, track_num):
 		"""操作対象トラックを変更する。"""
@@ -568,8 +568,3 @@ if __name__ == '__main__':
 	#3.編集結果をunparseして書きこむ
 	if 3 in enable:
 		editor.unparse('out.vsq')	
-		
-
-
-
-
