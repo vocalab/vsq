@@ -22,8 +22,6 @@ class ParserPage(webapp.RequestHandler):
         data = self.request.get('file')
         file_name = self.request.body_file.vars['file'].filename
         editor = VSQEditor(string = data)
-        #anotes = editor.get_anotes()
-        #lyrics = [anote['lyrics'] for anote in anotes]
         lyrics = editor.get_lyrics()
         candidates = editor.get_rule_cands(san_rule)
 
@@ -43,30 +41,25 @@ class ParserPage(webapp.RequestHandler):
             "name": file_name },
             key_prefix="vsq_", time=3600)
         template_values = {
-                #'lyrics': ''.join(lyrics).decode('shift_jis').encode('utf-8')
                 'lyrics': output_lyric,
                 'keys': candidate_keys
                 }
         path = os.path.join(os.path.dirname(__file__), 'parse.html')
         self.response.out.write(template.render(path, template_values))
-        #lyric = editor.get_anotes(s=6800)[0]['lyrics']
-        #self.response.out.write('<pre>' + lyric + '</pre>')
 
 class DownloadPage(webapp.RequestHandler):
     def post(self):
         data = memcache.get("vsq_data")
         file_name = memcache.get("vsq_name")
         editor = VSQEditor(string = data)
+        candidates = editor.get_rule_cands(san_rule)
         keys = self.request.get_all("rule1")
-        print("".join(keys))
 
-        #for i in range(1, len(rules))
-            #targets = self.request.get_all("rule" + i)
-            #for j in targets
-                #editor.apply_rule(rules[i], candidates[int(j)])
-        #self.response.headers['Content-Type'] = "application/x-vsq; charset=Shift_JIS"
-        #self.response.headers['Content-disposition'] = "filename=" + file_name.encode("utf-8")
-        #self.response.out.write(editor.unparse())
+        for key in keys:
+            editor.apply_rule(candidates[key])
+        self.response.headers['Content-Type'] = "application/x-vsq; charset=Shift_JIS"
+        self.response.headers['Content-disposition'] = "filename=" + file_name.encode("utf-8")
+        self.response.out.write(editor.unparse())
 
 application = webapp.WSGIApplication(
                                         [('/', MainPage),
