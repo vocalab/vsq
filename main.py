@@ -35,7 +35,7 @@ class ParserPage(webapp.RequestHandler):
             e_index = value["e_index"]
             output_lyric += lyrics[before_index:s_index].encode('utf-8') if (s_index != 0) else ""
             output_lyric += "<span id=\"range"+key+"\" class=\"chooseable\">"+ lyrics[s_index:e_index].encode('utf-8') + "</span>"
-            brefore_index = e_index
+            before_index = e_index
             candidate_keys.append(key)
         output_lyric += lyrics[before_index:].encode('utf-8') if (before_index != len(lyrics)) else ""
 

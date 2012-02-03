@@ -473,7 +473,7 @@ class VSQEditor(object):
 										rule_i['e_index'])
 		for i, anote in enumerate(anotes):
 			dyn_curve = rule_i['rule']['dyn_curves'][i]
-			pit_curve = rule_i['rule']['dyn_curves'][i]
+			pit_curve = rule_i['rule']['pit_curves'][i]
 			self.set_dynamics_curve(dyn_curve['curve'],
 								anote['start_time'],
 								anote['end_time'],
@@ -482,6 +482,20 @@ class VSQEditor(object):
 								anote['start_time'],
 								anote['end_time'],
 								pit_curve['stretch'])
+
+	def unapply_rule(self, rule_i):
+		anotes = self.get_anotes_f_lyric_i(rule_i['s_index'],
+										rule_i['e_index'])
+		start_time = anotes[0]['start_time']
+		end_time = anotes[len(anotes)-1]['end_time']
+		self.set_dynamics_curve(rule_i['undyn'], 
+								start_time,
+								end_time)
+
+		self.set_pitch_curve(rule_i['unpit'], 
+								start_time,
+								end_time)
+
 
 
 	def get_rule_cands(self, rule):
@@ -515,10 +529,18 @@ class VSQEditor(object):
 				not check_notes(rule['relative_notes'],match_anotes)):
 				continue
 			else:
+				u_dyn_curve = self.get_dynamics_curve(
+						match_anotes[0]['start_time'],
+						match_anotes[len(match_anotes)-1]['end_time'])
+				u_pit_curve = self.get_dynamics_curve(
+						match_anotes[0]['start_time'],
+						match_anotes[len(match_anotes)-1]['end_time'])
 				rule_i = {"instance_ID":"I"+str(i),
 						"rule":rule,
 						"s_index":s,
-						"e_index":e}
+						"e_index":e,
+						"undyn":u_dyn_curve,
+						"unpit":u_pit_curve}
 				rule_dic[rule['rule_ID']+rule_i['instance_ID']] = rule_i
 		return rule_dic
 
