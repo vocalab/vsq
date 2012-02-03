@@ -250,6 +250,8 @@ class VSQEditor(object):
 		last_anote = track['AnoteEvents'][-1]
 		self.master_track['endTime'] = (last_anote['end_time']+
 										self.header['time_div']*4)
+		lyrics = [anote['lyrics'] for anote in track['AnoteEvents']]
+		track['lyrics'] = unicode(''.join(lyrics), 'shift-jis')
 		return track
 
 	def __unparse_normal_track(self, track): 
@@ -394,6 +396,9 @@ class VSQEditor(object):
 		param.sort()
 		return True
 
+	def get_lyrics(self):
+		return self.current_track['lyrics']
+
 	def get_anotes(self, s=None, e=None):
 		"""sからeまでの音符情報を取得する。
 			sやeを指定しなければ、トラックの先頭と末尾に置き換えられる。
@@ -402,6 +407,18 @@ class VSQEditor(object):
 		if e==None: e = self.master_track['endTime']
 		return [ev for ev in self.current_track['AnoteEvents']
 					   if s <= ev['end_time'] and ev['start_time'] <= e]
+
+	def get_anotes_f_lyric_i(self, s=None, e = None):
+		lyrics = self.get_lyrics()
+		if not s: s = 0
+		if not e: e = len(lyrics)
+		smallrxp = re.compile(u"[ぁぃぅぇぉゃゅょ]")
+
+		s_index = s - len(smallrxp.findall(lyrics[:s]))
+		e_index = e - len(smallrxp.findall(lyrics[:e]))
+		return self.current_track['AnoteEvents'][s_index:e_index]
+
+		
 
 	def __get_param_curve(self, ptype, s, e):
 		if s==None: s = self.master_track['startTime']
@@ -451,14 +468,25 @@ class VSQEditor(object):
 		else:
 			return False
 
-	def apply_rule(self, rule):
-		anotes = self.get_anotes()
-		lyrics = [anote['lyrics'] for anote in anotes]
-		lyrics = unicode(''.join(lyrics), 'shift-jis')
-		smallrxp = re.compile(u"[ぁぃぅぇぉゃゅょ]")
-		rulerxp = re.compile(rule['regexp'])
+	def apply_rule(self, rule_i):
+		anotes = self.get_anotes_f_lyric_i(rule_i['s_index'],
+										rule_i['e_index'])
+		for i, anote in enumerate(anotes):
+			dyn_curve = rule_i['rule']['dyn_curves'][i]
+			pit_curve = rule_i['rule']['dyn_curves'][i]
+			self.set_dynamics_curve(dyn_curve['curve'],
+								anote['start_time'],
+								anote['end_time'],
+								dyn_curve['stretch'])
+			self.set_pitch_curve(pit_curve['curve'],
+								anote['start_time'],
+								anote['end_time'],
+								pit_curve['stretch'])
 
-		candidates = []
+
+	def get_rule_cands(self, rule):
+		rulerxp = re.compile(rule['regexp'])
+		rule_dic = {}
 		def is_connected(anotes):
 			if len(anotes) <= 1: return False
 			for i, anote in enumerate(anotes[1:]):
@@ -471,37 +499,45 @@ class VSQEditor(object):
 									for i, anote in enumerate(anotes[1:])]
 			return relative_notes == notes
 
-		check_len = lambda x, y: len(x)==len(y)
+		match_len = lambda x, y: len(x)==len(y)
 
-		for match in rulerxp.finditer(lyrics):
+		lyrics = self.get_lyrics()
+		for i, match in enumerate(rulerxp.finditer(lyrics)):
 			s = match.start()
 			e = match.end()
-			s_index = s - len(smallrxp.findall(lyrics[:s]))
-			e_index = e - len(smallrxp.findall(lyrics[:e]))
-			match_anotes = anotes[s_index:e_index]
+			match_anotes = self.get_anotes_f_lyric_i(s,e)
 			if rule['connect'] and not is_connected(match_anotes):
 				continue
-			if (not check_len(rule['dyn_curves'], match_anotes) or
-				not check_len(rule['pit_curves'], match_anotes)):
+			if (not match_len(rule['dyn_curves'], match_anotes) or
+				not match_len(rule['pit_curves'], match_anotes)):
 				continue
 			if (rule['relative_notes'] and 
 				not check_notes(rule['relative_notes'],match_anotes)):
 				continue
 			else:
-				candidates.append(match_anotes)
-		print candidates
-		for c_anotes in candidates:
-			for i, c_anote in enumerate(c_anotes):
-				dyn_curve = rule['dyn_curves'][i]
-				pit_curve = rule['dyn_curves'][i]
-				self.set_dynamics_curve(dyn_curve['curve'],
-									c_anote['start_time'],
-									c_anote['end_time'],
-									dyn_curve['stretch'])
-				self.set_pitch_curve(pit_curve['curve'],
-									c_anote['start_time'],
-									c_anote['end_time'],
-									pit_curve['stretch'])
+				rule_i = {"instance_ID":"I"+str(i),
+						"rule":rule,
+						"s_index":s,
+						"e_index":e}
+				rule_dic[rule['rule_ID']+rule_i['instance_ID']] = rule_i
+		return rule_dic
+
+
+dyn_curves = [{"curve":range(0,100),"stretch":None},
+				{"curve":range(30,0,-1)+range(0,100),"stretch":None},
+				{"curve":range(100,0,-1),"stretch":None}]
+pit_curves = [{"curve":None,"stretch":None},
+		{"curve":None,"stretch":None},
+		{"curve":None,"stretch":None}]
+san_rule = {"rule_ID":"R0",
+		"name":u"さんの前のdynを下げる",
+		"regexp":u".さn",
+		"connect":True,
+		"relative_notes":[0,-2,0],
+		"dyn_curves":dyn_curves,
+		"pit_curves":pit_curves}
+
+	
 
 '''
 テストコード:
@@ -552,18 +588,10 @@ if __name__ == '__main__':
 	
 	#6.ルール適用テスト
 	if 6 in enable:
-		dyn_curves = [{"curve":range(0,100),"stretch":None},
-				{"curve":range(30,0,-1)+range(0,100),"stretch":None},
-				{"curve":range(100,0,-1),"stretch":None}]
-		pit_curves = [{"curve":None,"stretch":None},
-				{"curve":None,"stretch":None},
-				{"curve":None,"stretch":None}]
-		rule = {"regexp":u".さn",
-				"connect":True,
-				"relative_notes":[0,-2,0],
-				"dyn_curves":dyn_curves,
-				"pit_curves":pit_curves}
-		editor.apply_rule(rule)
+		rule_cands = editor.get_rule_cands(san_rule)
+		print rule_cands
+		for rule_i in rule_cands.values():
+			editor.apply_rule(rule_i)
 
 	#3.編集結果をunparseして書きこむ
 	if 3 in enable:
