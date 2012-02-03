@@ -2,7 +2,6 @@ $(document).ready(function(){
     var changeHighlight = function(obj){
         var index = $(obj).parent().find("input:checkbox").index(obj);
         if(index !== -1){
-            console.log($(obj).val())
             var range = $(obj).parent().find("#range" + $(obj).val());
             if($(obj).attr("checked") === "checked"){
                 range.addClass("choosen");
@@ -22,4 +21,13 @@ $(document).ready(function(){
     $("input:radio").change(function(){ selectRule(this) });
     $(".rule").css("display", "none");
     $("input:radio").each(function(){ selectRule(this)} );
+    $(".chooseable").click(function(){
+        var clickedCandidate = $("input:checkbox[value="+$(this).attr("id").slice(5)+"]")
+        if(clickedCandidate.attr("checked") === "checked"){
+            clickedCandidate.removeAttr("checked");
+        } else {
+            clickedCandidate.attr("checked", "checked");
+        }
+        clickedCandidate.change();
+    });
 });

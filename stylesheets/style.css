@@ -1,6 +1,8 @@
 .chooseable {
   background: #666;
+  cursor: pointer;
 }
 .choosen {
   background: #41cde2;
+  cursor: pointer;
 }

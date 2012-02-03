@@ -7,7 +7,7 @@
     <meta name="description" content="">
     <link rel="stylesheet" type="text/css" href="stylesheets/style.css">
     <script src="javascripts/jquery-1.7.1.min.js"></script>
-    <script src="javascripts/parse.jquery.js"></script>
+    <script src="javascripts/jquery.parse.js"></script>
     <!--[if lt IE8]>
     <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
@@ -18,12 +18,11 @@
         <p>{{ lyrics }}</p>
         <!--<p><span class="chooseable" id="range0">適用範囲１</span><span class="chooseable" id="range1">適用範囲２</span><span class="chooseable" id="range2">適用範囲３</span></p>-->
         {% for key in keys %}
-        <input type="checkbox" name="rule1" value="{{ key }}" />
+        <input type="checkbox" name="rule1" value="{{ key }}" style="display: none"/>
         {% endfor %}
         <!--<input type="checkbox" name="rule1" value="1" />-->
         <!--<input type="checkbox" name="rule1" value="2" />-->
         <!--<input type="checkbox" name="rule1" value="3" />-->
-        <input type="submit" value="適用">
       </div>
       <div id="rule1" class="rule">
         <p class="chooseable">{{ lyrics }}</p>
@@ -31,8 +30,8 @@
         <input type="checkbox" name="rule2" value="1" />
         <input type="checkbox" name="rule2" value="2" />
         <input type="checkbox" name="rule2" value="3" />
-        <input type="submit" value="適用">
       </div>
+      <input type="submit" value="適用">
     </form>
     <form action="">
       <!-- for i in rules -->

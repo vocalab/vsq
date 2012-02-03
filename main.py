@@ -29,12 +29,14 @@ class ParserPage(webapp.RequestHandler):
 
         output_lyric = ""
         before_index = 0
+        candidate_keys = []
         for key, value in sorted(candidates.items(), key=lambda x:x[1]["s_index"]):
             s_index = value["s_index"]
             e_index = value["e_index"]
             output_lyric += lyrics[before_index:s_index].encode('utf-8') if (s_index != 0) else ""
             output_lyric += "<span id=\"range"+key+"\" class=\"chooseable\">"+ lyrics[s_index:e_index].encode('utf-8') + "</span>"
             brefore_index = e_index
+            candidate_keys.append(key)
         output_lyric += lyrics[before_index:].encode('utf-8') if (before_index != len(lyrics)) else ""
 
         memcache.set_multi({ "data": data,
@@ -43,7 +45,7 @@ class ParserPage(webapp.RequestHandler):
         template_values = {
                 #'lyrics': ''.join(lyrics).decode('shift_jis').encode('utf-8')
                 'lyrics': output_lyric,
-                'keys': candidates.keys()
+                'keys': candidate_keys
                 }
         path = os.path.join(os.path.dirname(__file__), 'parse.html')
         self.response.out.write(template.render(path, template_values))
