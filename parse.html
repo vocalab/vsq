@@ -14,14 +14,31 @@
   </head>
   <body>
     <form action="/download" method="post">
-      <div id="rule">
-      <p class="chooseable">{{ lyrics }}</p>
-      <p><span class="chooseable" id="range0">適用範囲１</span><span class="chooseable" id="range1">適用範囲２</span><span class="chooseable" id="range2">適用範囲３</span></p>
-        <input type="checkbox" name="range" value="1" />
-        <input type="checkbox" name="range" value="2" />
-        <input type="checkbox" name="range" value="3" />
+      <div id="rule0" class="rule">
+        <p>{{ lyrics }}</p>
+        <!--<p><span class="chooseable" id="range0">適用範囲１</span><span class="chooseable" id="range1">適用範囲２</span><span class="chooseable" id="range2">適用範囲３</span></p>-->
+        {% for key in keys %}
+        <input type="checkbox" name="rule1" value="{{ key }}" />
+        {% endfor %}
+        <!--<input type="checkbox" name="rule1" value="1" />-->
+        <!--<input type="checkbox" name="rule1" value="2" />-->
+        <!--<input type="checkbox" name="rule1" value="3" />-->
         <input type="submit" value="適用">
       </div>
+      <div id="rule1" class="rule">
+        <p class="chooseable">{{ lyrics }}</p>
+        <p><span class="chooseable" id="range0">適用範囲１</span><span class="chooseable" id="range1">適用範囲２</span><span class="chooseable" id="range2">適用範囲３</span></p>
+        <input type="checkbox" name="rule2" value="1" />
+        <input type="checkbox" name="rule2" value="2" />
+        <input type="checkbox" name="rule2" value="3" />
+        <input type="submit" value="適用">
+      </div>
+    </form>
+    <form action="">
+      <!-- for i in rules -->
+      <input type="radio" name="rule" checked="checked" value="0"/>ルール１
+      <input type="radio" name="rule" value="1" />ルール２
+      <!-- endfor -->
     </form>
   </body>
 </html>
