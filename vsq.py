@@ -573,18 +573,19 @@ san_rule = {"rule_ID":"R0",
 '''
 if __name__ == '__main__':
 	editor = VSQEditor(string=open('test.vsq', 'r').read())
-	enable = [6,3]
+	enable = [1]
 	
 	#1.音符情報、dynamics,pitchbendカーブを表示
 	if 1 in enable: 
 		print "anotes:"
 		anotes = editor.get_anotes(6800,7100)
-		print pp(panotes)
+		print pp(anotes)
 		
 		print "\ndynamics:"
 		print pp(editor.get_dynamics_curve(6800,7100))
 		print "\npitchbend:"
 		print pp(editor.get_pitch_curve(6800,7100))
+		print pp([[p['time'], p['value']] for p in editor.get_dynamics_curve()])
 	
 	#2.範囲を選択してカーブを編集
 	if 2 in enable:

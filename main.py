@@ -6,6 +6,7 @@ from google.appengine.ext.webapp import template
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.api import memcache
+import simplejson as json
 from vsq import *
 
 class MainPage(webapp.RequestHandler):
@@ -36,13 +37,15 @@ class ParserPage(webapp.RequestHandler):
             before_index = e_index
             candidate_keys.append(key)
         output_lyric += lyrics[before_index:].encode('utf-8') if (before_index != len(lyrics)) else ""
+        dyn_list = [[p['time'],p['value']] for p in editor.get_dynamics_curve()]
 
         memcache.set_multi({ "data": data,
             "name": file_name },
             key_prefix="vsq_", time=3600)
         template_values = {
                 'lyrics': output_lyric,
-                'keys': candidate_keys
+                'keys': candidate_keys,
+                'dyn_curves': json.dumps(dyn_list)
                 }
         path = os.path.join(os.path.dirname(__file__), 'parse.html')
         self.response.out.write(template.render(path, template_values))
