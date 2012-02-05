@@ -502,13 +502,14 @@ class VSQEditor(object):
 		rulerxp = re.compile(rule['regexp'])
 		rule_dic = {}
 		def is_connected(anotes):
-			if len(anotes) <= 1: return False
+			if len(anotes) <= 1: return True 
 			for i, anote in enumerate(anotes[1:]):
 				if anote['start_time'] - anotes[i]['end_time'] > 50:
 					return False
 			return True
 
 		def check_notes(notes, anotes):
+			if notes is None: return True
 			relative_notes = [0] + [anote['note'] - anotes[i]['note'] 
 									for i, anote in enumerate(anotes[1:])]
 			return relative_notes == notes
@@ -551,13 +552,27 @@ dyn_curves = [{"curve":range(0,100),"stretch":None},
 pit_curves = [{"curve":None,"stretch":None},
 		{"curve":None,"stretch":None},
 		{"curve":None,"stretch":None}]
+
 san_rule = {"rule_ID":"R0",
-		"name":u"さんの前のdynを下げる",
+		"name":"さんの前のdynを下げる",
 		"regexp":u".さn",
 		"connect":True,
 		"relative_notes":[0,-2,0],
 		"dyn_curves":dyn_curves,
 		"pit_curves":pit_curves}
+def const(value, length): return [ value for i in range(length)]
+
+zuii_dyn_curves = [{"curve":const(100,10)+range(100,0,-5),"stretch":None}]
+zuii_pit_curves = [{"curve":None,"stretch":None}]
+
+zuii_rule = {"rule_ID":"R1",
+		"name":"ずぃの最後お下げる",
+		"connect":False,
+		"regexp":u"ずぃ",
+		"relative_notes":None,
+		"dyn_curves":zuii_dyn_curves,
+		"pit_curves":zuii_pit_curves}
+
 
 	
 
@@ -573,7 +588,7 @@ san_rule = {"rule_ID":"R0",
 '''
 if __name__ == '__main__':
 	editor = VSQEditor(string=open('test.vsq', 'r').read())
-	enable = [1]
+	enable = [6]
 	
 	#1.音符情報、dynamics,pitchbendカーブを表示
 	if 1 in enable: 
@@ -611,7 +626,7 @@ if __name__ == '__main__':
 	
 	#6.ルール適用テスト
 	if 6 in enable:
-		rule_cands = editor.get_rule_cands(san_rule)
+		rule_cands = editor.get_rule_cands(zuii_rule)
 		print rule_cands
 		for rule_i in rule_cands.values():
 			editor.apply_rule(rule_i)

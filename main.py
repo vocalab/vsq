@@ -24,7 +24,8 @@ class ParserPage(webapp.RequestHandler):
         file_name = self.request.body_file.vars['file'].filename
         editor = VSQEditor(string = data)
         lyrics = editor.get_lyrics()
-        candidates = editor.get_rule_cands(san_rule)
+        candidates = editor.get_rule_cands(zuii_rule)
+        candidates.update(editor.get_rule_cands(san_rule))
 
         output_lyric = ""
         before_index = 0
@@ -54,7 +55,8 @@ class AppliedVsqJSON(webapp.RequestHandler):
     def post(self):
         data = memcache.get("vsq_data")
         editor = VSQEditor(string = data)
-        candidates = editor.get_rule_cands(san_rule)
+        candidates = editor.get_rule_cands(zuii_rule)
+        candidates.update(editor.get_rule_cands(san_rule))
         keys = self.request.get_all("rule1")
 
         for key in keys:
@@ -68,7 +70,8 @@ class DownloadPage(webapp.RequestHandler):
         data = memcache.get("vsq_data")
         file_name = memcache.get("vsq_name")
         editor = VSQEditor(string = data)
-        candidates = editor.get_rule_cands(san_rule)
+        candidates = editor.get_rule_cands(zuii_rule)
+        candidates.update(editor.get_rule_cands(san_rule))
         keys = self.request.get_all("rule1")
 
         for key in keys:
