@@ -50,6 +50,19 @@ class ParserPage(webapp.RequestHandler):
         path = os.path.join(os.path.dirname(__file__), 'parse.html')
         self.response.out.write(template.render(path, template_values))
 
+class AppliedVsqJSON(webapp.RequestHandler):
+    def post(self):
+        data = memcache.get("vsq_data")
+        editor = VSQEditor(string = data)
+        candidates = editor.get_rule_cands(san_rule)
+        keys = self.request.get_all("rule1")
+
+        for key in keys:
+            editor.apply_rule(candidates[key])
+        dyn_list = [[p['time'],p['value']] for p in editor.get_dynamics_curve()]
+        self.response.content_type = "application/json"
+        self.response.out.write(json.dumps(dyn_list))
+
 class DownloadPage(webapp.RequestHandler):
     def post(self):
         data = memcache.get("vsq_data")
@@ -67,6 +80,7 @@ class DownloadPage(webapp.RequestHandler):
 application = webapp.WSGIApplication(
                                         [('/', MainPage),
                                          ('/parse', ParserPage),
+                                         ('/appliedvsq', AppliedVsqJSON),
                                          ('/download', DownloadPage)],
                                         debug=True)
 
