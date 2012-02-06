@@ -17,26 +17,25 @@
   </head>
   <body>
     <form id="rule-form" action="/download" method="post">
-      <div id="rule0" class="rule">
-        <p>{{ lyrics }}</p>
-        {% for key in keys %}
-        <input type="checkbox" name="rule1" value="{{ key }}" style="display: none"/>
+      {% for l in lyrics %}
+      <div id="rule{{ forloop.counter0 }}" class="rule">
+        <p>{{ l.1 }}</p>
+
+        {% for key in l.0 %}
+        <input type="checkbox" name="rule" value="{{ key }}" style="display: none"/>
         {% endfor %}
       </div>
-      <div id="rule1" class="rule">
-        <p class="chooseable">{{ lyrics }}</p>
-        <p><span class="chooseable" id="range0">適用範囲１</span><span class="chooseable" id="range1">適用範囲２</span><span class="chooseable" id="range2">適用範囲３</span></p>
-        <input type="checkbox" name="rule2" value="1" />
-        <input type="checkbox" name="rule2" value="2" />
-        <input type="checkbox" name="rule2" value="3" />
-      </div>
+      {% endfor %}
       <input type="submit" value="適用">
     </form>
     <form action="">
-      <!-- for i in rules -->
-      <input type="radio" name="rule" checked="checked" value="0"/>ルール１
-      <input type="radio" name="rule" value="1" />ルール２
-      <!-- endfor -->
+      {% for i in lyrics %}
+        {% ifequal forloop.counter0 0 %}
+        <input type="radio" name="select_rule" checked="checked" value="0">ルール1
+        {% else %}
+        <input type="radio" name="select_rule" value="{{forloop.counter0}}"/>ルール{{forloop.counter}}
+        {% endifequal %}
+      {% endfor %}
     </form>
     <div id="container" style="height: 300px"></div>
   </body>
