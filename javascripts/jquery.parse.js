@@ -2,6 +2,7 @@ $(document).ready(function(){
     var chart = new Highcharts.Chart({
         chart: {
             renderTo: 'container',
+            defaultSeriesType: 'area',
             zoomType: 'x',
         },
         title: {
@@ -39,6 +40,9 @@ $(document).ready(function(){
                         lineWidth: 1
                     }
                 }
+            },
+            series: {
+                step: true
             }
         },
         series:[{
