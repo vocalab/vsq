@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+from vsq_rules import *
 from struct import *
 import pprint
 
@@ -471,17 +472,16 @@ class VSQEditor(object):
 	def apply_rule(self, rule_i):
 		anotes = self.get_anotes_f_lyric_i(rule_i['s_index'],
 										rule_i['e_index'])
-		for i, anote in enumerate(anotes):
-			dyn_curve = rule_i['rule']['dyn_curves'][i]
-			pit_curve = rule_i['rule']['pit_curves'][i]
-			self.set_dynamics_curve(dyn_curve['curve'],
-								anote['start_time'],
-								anote['end_time'],
-								dyn_curve['stretch'])
-			self.set_pitch_curve(pit_curve['curve'],
-								anote['start_time'],
-								anote['end_time'],
-								pit_curve['stretch'])
+		for i, curve in enumerate(rule_i['rule']['dyn_curves']):
+			self.set_dynamics_curve(curve['curve'],
+								anotes[i]['start_time'],
+								anotes[i]['end_time'],
+								curve['stretch'])
+		for i, curve in enumerate(rule_i['rule']['pit_curves']):
+			self.set_pitch_curve(curve['curve'],
+								anotes[i]['start_time'],
+								anotes[i]['end_time'],
+								curve['stretch'])
 
 	def unapply_rule(self, rule_i):
 		anotes = self.get_anotes_f_lyric_i(rule_i['s_index'],
@@ -514,7 +514,7 @@ class VSQEditor(object):
 									for i, anote in enumerate(anotes[1:])]
 			return relative_notes == notes
 
-		match_len = lambda x, y: len(x)==len(y)
+		match_len = lambda x, y: (not x or not y) or len(x)==len(y)
 
 		lyrics = self.get_lyrics()
 		for i, match in enumerate(rulerxp.finditer(lyrics)):
@@ -545,33 +545,6 @@ class VSQEditor(object):
 				rule_dic[rule['rule_ID']+rule_i['instance_ID']] = rule_i
 		return rule_dic
 
-
-dyn_curves = [{"curve":range(0,100),"stretch":None},
-				{"curve":range(30,0,-1)+range(0,100),"stretch":None},
-				{"curve":range(100,0,-1),"stretch":None}]
-pit_curves = [{"curve":None,"stretch":None},
-		{"curve":None,"stretch":None},
-		{"curve":None,"stretch":None}]
-
-san_rule = {"rule_ID":"R0",
-		"name":"さんの前のdynを下げる",
-		"regexp":u".さn",
-		"connect":True,
-		"relative_notes":[0,-2,0],
-		"dyn_curves":dyn_curves,
-		"pit_curves":pit_curves}
-def const(value, length): return [ value for i in range(length)]
-
-zuii_dyn_curves = [{"curve":const(100,10)+range(100,0,-5),"stretch":None}]
-zuii_pit_curves = [{"curve":None,"stretch":None}]
-
-zuii_rule = {"rule_ID":"R1",
-		"name":"ずぃの最後お下げる",
-		"connect":False,
-		"regexp":u"ずぃ",
-		"relative_notes":None,
-		"dyn_curves":zuii_dyn_curves,
-		"pit_curves":zuii_pit_curves}
 
 
 	

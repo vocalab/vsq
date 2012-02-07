@@ -65,8 +65,9 @@ class AppliedVsqJSON(webapp.RequestHandler):
         for key in keys:
             editor.apply_rule(candidates[key])
         dyn_list = [[p['time'],p['value']] for p in editor.get_dynamics_curve()]
+        pit_list = [[p['time'],p['value']] for p in editor.get_pitch_curve()]
         self.response.content_type = "application/json"
-        self.response.out.write(json.dumps(dyn_list))
+        self.response.out.write(json.dumps({"dyn":dyn_list,"pit":pit_list}))
 
 class DownloadPage(webapp.RequestHandler):
     def post(self):

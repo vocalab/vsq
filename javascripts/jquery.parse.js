@@ -1,7 +1,7 @@
 $(document).ready(function(){
-    var chart = new Highcharts.Chart({
+    var dynChart = new Highcharts.Chart({
         chart: {
-            renderTo: 'container',
+            renderTo: 'dynchart',
             defaultSeriesType: 'area',
             zoomType: 'x',
         },
@@ -46,9 +46,62 @@ $(document).ready(function(){
             }
         },
         series:[{
-            data: []
-        }]
+			data: []
+		}]
     });
+	var pitChart = new Highcharts.Chart({
+        chart: {
+            renderTo: 'pitchart',
+            defaultSeriesType: 'area',
+            zoomType: 'x',
+        },
+		colors: ['#AA4643'],
+        title: {
+            text: "pitch curve"
+        },
+        yAxis: {
+            max: 30000,
+            min: -30000
+        },
+        legend: {
+            enabled :false,
+        },
+        plotOptions: {
+            area: {
+                fillColor: {
+                    linearGradient: [0, 0, 0, 300],
+                    stops: [
+                        [0, Highcharts.getOptions().colors[1]],
+                        [1, 'rgba(0,2,0,0)']
+                    ]
+                },
+                lineWidth: 1,
+                marker: {
+                    enabled: false,
+                    states: {
+                        hover: {
+                            enabled: true,
+                            radius: 5
+                        }
+                    }
+                },
+                shadow: false,
+                states: {
+                    hover: {
+                        lineWidth: 1
+                    }
+                }
+            },
+            series: {
+                step: true
+            }
+        },
+        series:[{
+            data: []
+		}]
+    });
+
+
 
     var changeHighlight = function(obj){
         var index = $(obj).parent().find("input:checkbox").index(obj);
@@ -70,7 +123,9 @@ $(document).ready(function(){
     var changeGraph = function(){
         var options = {
             success: function(response){
-                chart.series[0].setData($.evalJSON(response));
+				dataset = $.evalJSON(response);
+                dynChart.series[0].setData(dataset.dyn);
+				pitChart.series[0].setData(dataset.pit);
             },
         url: "/appliedvsq"
         };
