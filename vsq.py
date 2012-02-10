@@ -30,12 +30,6 @@ class FakeFile(object):
         self._index += byte
         return string
 
-
-class VSQRule(object):
-    def __init__(self, **param):
-        print param
-
-
 class VSQEditor(object):
     """VSQファイルを扱うモジュール。
         超簡素かつ粗雑な作り。
@@ -347,32 +341,6 @@ class VSQEditor(object):
                 anoteEvents.append(es)
         return anoteEvents
 
-    def parse(self, filename=None, string=None):
-        """VSQファイルをパースする。"""
-        if filename: self._f = open(filename, 'r')
-        else: self._f = FakeFile(string)
-        self.header = self.__parse_header()
-        self.master_track = self.__parse_master_track()
-        self.normal_tracks = []
-        for i in range(self.header['track_num']-1):
-            track = self.__parse_normal_track()
-            self.normal_tracks.append(track)       
-        self.select_track(0)
-        
-    def unparse(self, filename=None):
-        """現在のオブジェクトのデータをアンパースして、
-           VSQファイルとして書きこむ。
-        """
-        binary = self.__unparse_header()
-        binary += self.__unparse_master_track()
-        for track in self.normal_tracks:
-            binary += self.__unparse_normal_track(track)
-        if filename: 
-            self._of = open(filename, 'w')
-            self._of.write(binary)
-        else:
-            return binary
-        
     def __set_param_curve(self, ptype, curve, s, e, stretch):
         if not curve: return False
         start_time = self.master_track['startTime']
@@ -397,12 +365,62 @@ class VSQEditor(object):
         param.sort()
         return True
 
+    def __get_param_curve(self, ptype, s, e):
+        if s==None: s = self.master_track['startTime']
+        if e==None: e = self.master_track['endTime']
+        return [ev for ev in self.current_track[ptype]
+                       if s <= ev['time'] <= e]
+
+    def parse(self, filename=None, binary=None):
+        """VSQファイルをパースする。引数はfilename,binaryのどちらかを指定
+        filename:VSQファイルのパス
+        binary:VSQファイルのバイナリデータ
+        """
+        if filename: self._f = open(filename, 'r')
+        else: self._f = FakeFile(binary)
+        self.header = self.__parse_header()
+        self.master_track = self.__parse_master_track()
+        self.normal_tracks = []
+        for i in range(self.header['track_num']-1):
+            track = self.__parse_normal_track()
+            self.normal_tracks.append(track)       
+        self.select_track(0)
+        
+    def unparse(self, filename=None):
+        """現在のオブジェクトのデータをアンパースして、VSQファイルとして書きこむ。
+        """
+        binary = self.__unparse_header()
+        binary += self.__unparse_master_track()
+        for track in self.normal_tracks:
+            binary += self.__unparse_normal_track(track)
+        if filename: 
+            self._of = open(filename, 'w')
+            self._of.write(binary)
+        else:
+            return binary
+    
     def get_lyrics(self):
+        """歌詞の文字列を取得する
+        戻り値:歌詞(string)
+        """
         return self.current_track['lyrics']
 
     def get_anotes(self, s=None, e=None):
         """sからeまでの音符情報を取得する。
-            sやeを指定しなければ、トラックの先頭と末尾に置き換えられる。
+        s:選択開始地点の時間
+        e:選択終了地点の時間
+        sやeを指定しなければ、トラックの先頭と末尾の時間に置き換えられる。
+        戻り値:AnoteEventのリスト
+        AnoteEvent:
+            音符イベントの主な情報をまとめたディクショナリ。構造は以下
+            {
+            "id":イベントID,
+            "lyrics":歌詞,
+            "phonetic":発音記号,
+            "start_time":音符イベントの絶対開始時刻,
+            "end_time":音符イベントの絶対終了時間,
+            "note":音高（MIDIの規格に基づく）
+            }
         """
         if s==None: s = self.master_track['startTime']
         if e==None: e = self.master_track['endTime']
@@ -418,29 +436,32 @@ class VSQEditor(object):
         s_index = s - len(smallrxp.findall(lyrics[:s]))
         e_index = e - len(smallrxp.findall(lyrics[:e]))
         return self.current_track['AnoteEvents'][s_index:e_index]
-
-        
-
-    def __get_param_curve(self, ptype, s, e):
-        if s==None: s = self.master_track['startTime']
-        if e==None: e = self.master_track['endTime']
-        return [ev for ev in self.current_track[ptype]
-                       if s <= ev['time'] <= e]
-
+    
     def get_pitch_curve(self, s=None, e=None):
         """sからeまでのピッチ曲線を取得する。
-            sやeを指定しなければ、トラックの先頭と末尾に置き換えられる。
+        s:選択開始地点の絶対時間
+        e:選択終了地点の絶対時間
+        sやeを指定しなければ、トラックの先頭と末尾の時間に置き換えられる。
         """
         return self.__get_param_curve('PitchBendBPList', s, e)
 
     def get_dynamics_curve(self, s=None, e=None):
         """sからeまでのダイナミクス曲線を取得する。
-            sやeを指定しなければ、トラックの先頭と末尾に置き換えられる。
+        s:選択開始地点の絶対時間
+        e:選択終了地点の絶対時間
+        戻り値:曲線における
+        sやeを指定しなければ、トラックの先頭と末尾の時間に置き換えられる。
         """
         return self.__get_param_curve('DynamicsBPList', s, e)
 
     def set_pitch_curve(self, curve, s=None, e=None, stretch=None):
-        """sからeまでのピッチ曲線をcurveで置き換える。"""
+        """sからeまでのピッチ曲線をcurveで置き換える。
+        s:選択開始地点の絶対時間
+        e:選択終了地点の絶対時間
+        stretch:曲線の伸縮オプション（未実装）
+        
+        sやeを指定しなければ、トラックの先頭と末尾の時間に置き換えられる。
+        """
         return self.__set_param_curve('PitchBendBPList',
                                         curve,
                                         s,
@@ -456,6 +477,7 @@ class VSQEditor(object):
                                         stretch)
 
     def set_anote_length(self, anotes, length):
+        """音符の長さ"""
         events = self.current_track['Events']
         for anote in anotes:
             events[anote['id']]['length'] = length
@@ -470,8 +492,11 @@ class VSQEditor(object):
             return False
 
     def apply_rule(self, rule_i):
+        """ルールを適用する
+        rule_i: get_rule_candsメソッドによって得られたルールインスタンス
+        """
         anotes = self.get_anotes_f_lyric_i(rule_i['s_index'],
-                                        rule_i['e_index'])
+                                      rule_i['e_index'])
         for i, curve in enumerate(rule_i['rule']['dyn_curves']):
             self.set_dynamics_curve(curve['curve'],
                                 anotes[i]['start_time'],
@@ -484,6 +509,9 @@ class VSQEditor(object):
                                 curve['stretch'])
 
     def unapply_rule(self, rule_i):
+        """ルールの適用をもとに戻す
+        rule_i: get_rule_candsメソッドによって得られたルールインスタンス
+        """
         anotes = self.get_anotes_f_lyric_i(rule_i['s_index'],
                                         rule_i['e_index'])
         start_time = anotes[0]['start_time']
@@ -496,9 +524,11 @@ class VSQEditor(object):
                                 start_time,
                                 end_time)
 
-
-
     def get_rule_cands(self, rule):
+        """ルール適用候補を取得する
+        rule:ディクショナリとして格納されたルール定義。vsq_rules.pyを参照
+        戻り値:ルール適用候補（リスト）
+        """
         rulerxp = re.compile(rule['regexp'])
         rule_dic = {}
         def is_connected(anotes):
@@ -544,8 +574,6 @@ class VSQEditor(object):
                         "unpit":u_pit_curve}
                 rule_dic[rule['rule_ID']+rule_i['instance_ID']] = rule_i
         return rule_dic
-
-
 
     
 
