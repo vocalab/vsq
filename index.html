@@ -5,16 +5,19 @@
     <title></title>
     <meta name="keywords" content="">
     <meta name="description" content="">
-    <link rel="stylesheet" type="text/css" href="css/base.css">
+    <link rel="stylesheet" type="text/css" href="stylesheets/style.css">
     <!--[if lt IE8]>
     <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
   </head>
   <body>
-    <p>{{ greeting }}</p>
-    <form action="/parse" enctype="multipart/form-data" method="post">
-      <input type="file" name="file" />
-      <input type="submit" value="解析">
-    </form>
+    <header><h1>Vocalab</h1></header>
+    <div id="main">
+      <p>{{ greeting }}</p>
+      <form action="/parse" enctype="multipart/form-data" method="post">
+        <input type="file" name="file" />
+        <input type="submit" value="解析">
+      </form>
+    </div>
   </body>
 </html>

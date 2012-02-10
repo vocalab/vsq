@@ -16,12 +16,15 @@
     <![endif]-->
   </head>
   <body>
+    <header>
+      <h1>Vocalab</h1>
+    </header>
     <form id="rule-form" action="/download" method="post">
-      {% for l in lyrics %}
+      {% for r in rules %}
       <div id="rule{{ forloop.counter0 }}" class="rule">
-        <p>{{ l.1 }}</p>
+        <p>{{ r.lyric }}</p>
 
-        {% for key in l.0 %}
+        {% for key in r.keys %}
         <input type="checkbox" name="rule" value="{{ key }}" style="display: none"/>
         {% endfor %}
       </div>
@@ -29,11 +32,11 @@
       <input type="submit" value="適用">
     </form>
     <form action="">
-      {% for i in lyrics %}
+      {% for r in rules %}
         {% ifequal forloop.counter0 0 %}
-        <input type="radio" name="select_rule" checked="checked" value="0">ルール1
+        <input type="radio" name="select_rule" checked="checked" value="0">{{ r.name }}
         {% else %}
-        <input type="radio" name="select_rule" value="{{forloop.counter0}}"/>ルール{{forloop.counter}}
+        <input type="radio" name="select_rule" value="{{forloop.counter0}}"/>{{ r.name }}
         {% endifequal %}
       {% endfor %}
     </form>
