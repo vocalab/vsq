@@ -12,7 +12,8 @@ from vsq import *
 class MainPage(webapp.RequestHandler):
     def get(self):
         template_values = {
-                'greeting': 'VSQファイルを解析し、加工するプログラムです'
+                'greeting': 'VSQファイルを解析し、加工するプログラムです',
+                'image':'上記画像はテストで表示しています。'
                 }
 
         path = os.path.join(os.path.dirname(__file__), 'index.html')

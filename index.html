@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8">
     <title></title>
+    <link type="text/css" rel="stylesheet" href="/stylesheets/main.css" />
     <meta name="keywords" content="">
     <meta name="description" content="">
     <link rel="stylesheet" type="text/css" href="css/base.css">
@@ -10,11 +11,13 @@
     <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
   </head>
-  <body>
+  <body><center>
+  	<img src="images/chrysant.jpg">
+  	<p>{{ image }}</p>
     <p>{{ greeting }}</p>
     <form action="/parse" enctype="multipart/form-data" method="post">
       <input type="file" name="file" />
       <input type="submit" value="解析">
     </form>
-  </body>
+  </center></body>
 </html>
