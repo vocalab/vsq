@@ -1,2 +1,5 @@
-*.pyc
-app.yaml
+/*.pyc
+/app.yaml
+
+.DS_Store*
+Icon?
