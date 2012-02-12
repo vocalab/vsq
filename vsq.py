@@ -579,7 +579,7 @@ class VSQEditor(object):
                 u_dyn_curve = self.get_dynamics_curve(
                         match_anotes[0]['start_time'],
                         match_anotes[len(match_anotes)-1]['end_time'])
-                u_pit_curve = self.get_dynamics_curve(
+                u_pit_curve = self.get_pitch_curve(
                         match_anotes[0]['start_time'],
                         match_anotes[len(match_anotes)-1]['end_time'])
                 rule_i = {"instance_ID":"I"+str(i),
@@ -634,7 +634,7 @@ class VSQEditor(object):
 '''
 if __name__ == '__main__':
     editor = VSQEditor(binary=open('out.vsq', 'r').read())
-    enable = [3]
+    enable = [6,3]
     
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable: 
@@ -670,7 +670,6 @@ if __name__ == '__main__':
     #6.ルール適用テスト
     if 6 in enable:
         rule_cands = editor.get_rule_cands(zuii_rule)
-        print rule_cands
         for rule_i in rule_cands.values():
             editor.apply_rule(rule_i)
 
