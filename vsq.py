@@ -39,12 +39,12 @@ def dtime2binary(dtime):
     戻り値:デルタタイムのバイナリ
     """
     bins = []
-    calc_1b = lambda b: b & 0x7f if bins else (b & 0x7f) | 0x80
+    calc_1b = lambda b: (b & 0x7f) | 0x80 if bins else b & 0x7f 
     while dtime > 0x00:
         b = calc_1b(dtime)
-        bins.append(b)
+        bins.insert(0,b)
         dtime >>= 7
-    binary = pack('>'+str(len(bins))+'B', *bins) if bins else '\x00'
+    binary = pack(str(len(bins))+'B', *bins) if bins else '\x00'
     return binary
 
 
@@ -58,6 +58,9 @@ class FakeFile(object):
         string = self._string[self._index:self._index+byte]
         self._index += byte
         return string
+
+    def tell(self):
+        return self._index
 
 
 class Header(object):
@@ -317,18 +320,9 @@ class NormalTrack(object):
                 for item in value.items():
                     metastring += "%s=%s\n" % item
             elif value.keys().count('unknown3') == 0:
-                metastring += '''L0=\"%(lyrics)s\",\
-                                 \"%(phonetic)s\",\
-                                 %(unknown1)s,\
-                                 %(unknown2)s,\
-                                 %(protect)s\n''' % value
+                metastring += '''L0=\"%(lyrics)s\",\"%(phonetic)s\",%(unknown1)s,%(unknown2)s,%(protect)s\n''' % value
             else:
-                metastring += '''L0=\"%(lyrics)s\",\
-                                 \"%(phonetic)s\",\
-                                 %(unknown1)s,\
-                                 %(unknown2)s,\
-                                 %(unknown3)s,\
-                                 %(protect)s\n''' % value
+                metastring += '''L0=\"%(lyrics)s\",\"%(phonetic)s\",%(unknown1)s,%(unknown2)s,%(unknown3)s,%(protect)s\n''' % value
         #any BPList                         
         bprxp = re.compile('.+BPList')
         bptags = [tag for tag in data.keys() if bprxp.match(tag)]
@@ -385,7 +379,7 @@ class VSQEditor(object):
         pre_measure = int(self.normal_tracks[0].data['Master']['PreMeasure'])
         nn, dd, _, _ = self.master_track.beat
         track_div = self.header.data['time_div']
-        self.start_time = nn/float(2**dd)*4*pre_measure*track_div
+        self.start_time = int(nn/float(2**dd)*4*pre_measure*track_div)
 
         #トラックの終端時間（最後のノートイベントの終端時間）を求める
         self.end_time = self.start_time
@@ -639,19 +633,19 @@ class VSQEditor(object):
 5.音程の相対値を表示する
 '''
 if __name__ == '__main__':
-    editor = VSQEditor(binary=open('test.vsq', 'r').read())
+    editor = VSQEditor(binary=open('out.vsq', 'r').read())
     enable = [3]
     
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable: 
         print "anotes:"
         anotes = editor.get_anotes(6800,7100)
-        print pp(anotes)
+        pp(anotes)
         
         print "\ndynamics:"
-        print pp(editor.get_dynamics_curve(6800,7100))
+        pp(editor.get_dynamics_curve(6800,7100))
         print "\npitchbend:"
-        print pp(editor.get_pitch_curve(6800,7100))
+        pp(editor.get_pitch_curve(6800,7100))
     
     #2.範囲を選択してカーブを編集
     if 2 in enable:
@@ -662,12 +656,12 @@ if __name__ == '__main__':
         
     #4.歌詞を表示
     if 4 in enable:
-        print("\nlyrics:")
+        print "\nlyrics:"
         print editor.get_lyrics()
     
     #5.相対音階を表示（前のノートとの差をとる）
     if 5 in enable:
-        print("\nrelative_notes:")
+        print "\nrelative_notes:"
         anotes = editor.get_anotes()
         relative_notes = [0] + [anote['note'] - anotes[i]['note'] 
                                     for i, anote in enumerate(anotes[1:])]
@@ -682,4 +676,4 @@ if __name__ == '__main__':
 
     #3.編集結果をunparseして書きこむ
     if 3 in enable:
-        editor.unparse('/Users/oonomakoto/Dropbox/out.vsq')   
+        editor.unparse('out.vsq')   
