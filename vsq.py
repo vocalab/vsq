@@ -127,8 +127,7 @@ class MasterTrack(object):
             elif t == 0x03:  #Track Name
                 self.name = mevent['data']
             elif t == 0x58:  #Beat
-                if dtime == 0:  #プリメジャータイムを求める
-                    self.beat = unpack('4b', mevent['data'])
+                self.beat = unpack('4b', mevent['data'])
         self.data = data
 
     def unparse(self):
@@ -232,8 +231,8 @@ class NormalTrack(object):
             "Master": {},
             "Mixer": {},
             "EventList": [],
-            "Events": {},
-            "Details": {}}
+            "Events": {}, #ID#xxxxタグ
+            "Details": {}} #h#xxxxタグ
 
         #テキスト情報の解析
         current_tag = ''
@@ -298,40 +297,40 @@ class NormalTrack(object):
     def __unparse_text(self):
         #テキスト情報
         data = self.data
-        metastring = ''
+        text = ''
         #Common,Master,Mixer
         for tag in ['Common','Master','Mixer']:
-            metastring += '[%s]\n' % tag
+            text += '[%s]\n' % tag
             for item in data[tag].items():
-                metastring += "%s=%s\n" % item
+                text += "%s=%s\n" % item
         #EventList        
-        metastring += '[EventList]\n'
+        text += '[EventList]\n'
         for event in data['EventList']:
-            metastring += "%(time)s=%(id)s\n" % event
+            text += "%(time)s=%(id)s\n" % event
         #Events
         for key, value in data['Events'].items():
-            metastring += '[%s]\n' % key
+            text += '[%s]\n' % key
             for item in value.items():
-                metastring += "%s=%s\n" % item
+                text += "%s=%s\n" % item
         #Details
         for key, value in data['Details'].items():
-            metastring += '[%s]\n' % key
+            text += '[%s]\n' % key
             if value.keys().count('lyrics') == 0:
                 for item in value.items():
-                    metastring += "%s=%s\n" % item
+                    text += "%s=%s\n" % item
             elif value.keys().count('unknown3') == 0:
-                metastring += '''L0=\"%(lyrics)s\",\"%(phonetic)s\",%(unknown1)s,%(unknown2)s,%(protect)s\n''' % value
+                text += '''L0=\"%(lyrics)s\",\"%(phonetic)s\",%(unknown1)s,%(unknown2)s,%(protect)s\n''' % value
             else:
-                metastring += '''L0=\"%(lyrics)s\",\"%(phonetic)s\",%(unknown1)s,%(unknown2)s,%(unknown3)s,%(protect)s\n''' % value
+                text += '''L0=\"%(lyrics)s\",\"%(phonetic)s\",%(unknown1)s,%(unknown2)s,%(unknown3)s,%(protect)s\n''' % value
         #any BPList                         
         bprxp = re.compile('.+BPList')
         bptags = [tag for tag in data.keys() if bprxp.match(tag)]
         for tag in bptags:
-            metastring += "[%s]" % tag + '\n'
+            text += "[%s]\n" % tag 
             for item in data[tag]:
-                metastring += "%(time)d=%(value)d" % item + '\n'
+                text += "%(time)d=%(value)d\n" % item
 
-        return metastring
+        return text
     
     def __create_anote_events(self, data):
         """[ID,歌詞,発音,音高,開始時間,終了時間]
@@ -378,8 +377,8 @@ class VSQEditor(object):
         #トラックの先端時間（プリメジャータイムを除いた時間）を求める
         pre_measure = int(self.normal_tracks[0].data['Master']['PreMeasure'])
         nn, dd, _, _ = self.master_track.beat
-        track_div = self.header.data['time_div']
-        self.start_time = int(nn/float(2**dd)*4*pre_measure*track_div)
+        time_div = self.header.data['time_div']
+        self.start_time = int(nn/float(2**dd)*4*pre_measure*time_div)
 
         #トラックの終端時間（最後のノートイベントの終端時間）を求める
         self.end_time = self.start_time
@@ -395,7 +394,6 @@ class VSQEditor(object):
         filename:書き込むVSQファイルのパス
         戻り値:filenameが指定されなかった場合にはバイナリを返す
         """
-
         #各チャンクのアンパース
         binary = self.header.unparse()
         binary += self.master_track.unparse()
@@ -531,7 +529,7 @@ class VSQEditor(object):
         """
         anotes = self.get_anotes_f_lyric_i(rule_i['s_index'],rule_i['e_index'])
         start_time = anotes[0]['start_time']
-        end_time = anotes[len(anotes)-1]['end_time']
+        end_time = anotes[-1]['end_time']
         self.set_dynamics_curve(rule_i['undyn'], 
                                 start_time,
                                 end_time)
@@ -543,10 +541,12 @@ class VSQEditor(object):
     def get_rule_cands(self, rule):
         """ルール適用候補を取得する
         rule:ディクショナリとして格納されたルール定義（vsq_rules.pyを参照）
-        戻り値:ルール適用候補（リスト）
+        戻り値:ルール適用候補（ディクショナリ）
+        ルール適用候補のキーには重複しないIDが振られている
         """
         rulerxp = re.compile(rule['regexp'])
         rule_dic = {}
+
         def is_connected(anotes):
             if len(anotes) <= 1: return True 
             for i, anote in enumerate(anotes[1:]):
@@ -561,34 +561,37 @@ class VSQEditor(object):
             return relative_notes == notes
 
         match_len = lambda x, y: (not x or not y) or len(x)==len(y)
-
         lyrics = self.get_lyrics()
         for i, match in enumerate(rulerxp.finditer(lyrics)):
             s = match.start()
             e = match.end()
             match_anotes = self.get_anotes_f_lyric_i(s,e)
+            #各ノートが接続されているか
             if rule['connect'] and not is_connected(match_anotes):
                 continue
+            #ノートの数と各ノートに割り当てられるカーブの数が一致するか
             if (not match_len(rule['dyn_curves'], match_anotes) or
                 not match_len(rule['pit_curves'], match_anotes)):
                 continue
+            #音階の変化が一致するか
             if (rule['relative_notes'] and 
                 not check_notes(rule['relative_notes'],match_anotes)):
                 continue
             else:
                 u_dyn_curve = self.get_dynamics_curve(
                         match_anotes[0]['start_time'],
-                        match_anotes[len(match_anotes)-1]['end_time'])
+                        match_anotes[-1]['end_time'])
                 u_pit_curve = self.get_pitch_curve(
                         match_anotes[0]['start_time'],
-                        match_anotes[len(match_anotes)-1]['end_time'])
-                rule_i = {"instance_ID":"I"+str(i),
+                        match_anotes[-1]['end_time'])
+                rule_i = {"instance_id":"I"+str(i),
                         "rule":rule,
                         "s_index":s,
                         "e_index":e,
                         "undyn":u_dyn_curve,
                         "unpit":u_pit_curve}
-                rule_dic[rule['rule_ID']+rule_i['instance_ID']] = rule_i
+                rule_dic[rule['rule_id']+rule_i['instance_id']] = rule_i
+
         return rule_dic
 
     def __set_param_curve(self, ptype, curve, s, e, stretch):
