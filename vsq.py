@@ -9,7 +9,6 @@ __status__ = "test"
 __date__ = "2012/02/13"
 __version__ = 0.02
 
-
 def pp(obj):
     """オブジェクトを綺麗に表示する 
     """
@@ -17,6 +16,11 @@ def pp(obj):
     str = pp.pformat(obj)
     print str
 
+def pp_str(obj):
+    """整形された obj のデータを返す
+    """
+    pp = pprint.PrettyPrinter(indent=4, width=180)
+    return pp.pformat(obj)
 
 def get_dtime(fp):
     """デルタタイムを取得する
@@ -154,7 +158,13 @@ class MasterTrack(object):
 class NormalTrack(object):
     """ノーマルトラック（マスタートラック以外）を扱うクラス"""
     def __init__(self, fp):
+        # self.data
+        # self.lyrics
+        # self.anote_events の設定
         self.parse(fp)
+
+    def __str__(self):
+        return pp_str(self.data)
 
     def parse(self, fp):
         """vsqファイルのノーマルトラック部分をパースする
@@ -166,7 +176,8 @@ class NormalTrack(object):
             "MTrk": unpack(">4s", fp.read(4))[0],
             "size": unpack('>i', fp.read(4))[0],
             "text": '',
-            "cc_data": []}
+            "cc_data": []
+            }
 
         #MIDIイベントの解析
         while True:
@@ -230,9 +241,9 @@ class NormalTrack(object):
             "Common": {},
             "Master": {},
             "Mixer": {},
-            "EventList": [],
-            "Events": {}, #ID#xxxxタグ
-            "Details": {}} #h#xxxxタグ
+            "EventList": [],    # [時間] = ID#xxxxのリスト
+            "Events": {},       # ID#xxxxタグ
+            "Details": {}}      # h#xxxxタグ
 
         #テキスト情報の解析
         current_tag = ''
@@ -386,6 +397,7 @@ class VSQEditor(object):
             et = track.anote_events[-1]['end_time']
             self.end_time = max(et, self.end_time)
 
+        # self.current_track を 0 番目に設定
         self.select_track(0)
         
     def unparse(self, filename=None):
@@ -401,8 +413,10 @@ class VSQEditor(object):
             binary += track.unparse()
         
         #オプションに従って出力
-        if filename: open(filename, 'w').write(binary)
-        else: return binary
+        if filename:
+            open(filename, 'w').write(binary)
+        else:
+            return binary
     
     def get_lyrics(self):
         """歌詞を取得する
@@ -428,8 +442,10 @@ class VSQEditor(object):
             "note":音高（MIDIの規格に基づく）
             }
         """
-        if s==None: s = self.start_time
-        if e==None: e = self.end_time
+        if s == None:
+            s = self.start_time
+        if e == None:
+            e = self.end_time
         anotes = self.current_track.anote_events
         return [ev for ev in anotes
                 if s <= ev['end_time'] and ev['start_time'] <= e]
@@ -498,13 +514,69 @@ class VSQEditor(object):
         for anote in anotes:
             events[anote['id']]['length'] = length
             anote['end_time'] = anote['start_time'] + length
-        
-    def select_track(self, track_num):
-        """操作対象トラックを変更する
-        track_num:トラック番号
+    
+
+    def insert_note(self, note, index):
+        """指定したインデックスの箇所に音符を挿入する
+        === Args
+        note: 挿入する音符イベント↑
+        index: EventListのインデックス、おそらく歌詞の挿入としてはこっちのほうが自然
+        === Returns
+        0: 成功
+        1: 失敗
         """
-        if track_num < self.track_num:
-            self.current_track = self.normal_tracks[track_num]
+        def invalid_arguments(note, index):
+            """引数のチェック"""
+            i = False if 0 <= index <= len(self.current_track.data["EventList"]) else True
+            j = False if note['lyric'] and note['event'] else True
+            k = False if note else True
+            return i and j and k
+
+        def inc(handle_number_string):
+            return "h#%04d" % (int(handle_number_string[2:]) + 1)
+
+        if invalid_arguments(note, index):
+            return 1
+        
+        # あとでIDとかhを振り直せば楽じゃねっておもった
+        event_list = [e['time'] for e in self.current_track.data['EventList']]
+        handle_detail = [e[1] for e in sorted(self.current_track.data['Details'].items())]
+        events_detail = [e[1] for e in sorted(self.current_track.data['Events'].items())]
+
+        note['event']['LyricHandle'] = events_detail[index]['LyricHandle']
+        handle_index = int(events_detail[index]['LyricHandle'][2:])
+        for i in range(index, len(events_detail), 1):
+            if 'LyricHandle' in events_detail[i]:
+                events_detail[i]['LyricHandle'] = inc(events_detail[i]['LyricHandle'])
+            if 'VibratoHandle' in events_detail[i]:
+                events_detail[i]['VibratoHandle'] = inc(events_detail[i]['VibratoHandle'])
+        # ♂
+        events_detail.insert(index, note['event'])
+        handle_detail.insert(handle_index, note['lyric'])
+        event_list.insert(index, event_list[index])
+
+        # 追加するノートの長さ分、EventListの時間をずらす
+        for i in range(index+1, len(event_list), 1):
+            event_list[i] = int(event_list[i]) + int(note['event']['Length'])
+
+        # 値の更新
+        self.end_time += int(note['event']['Length'])
+        self.current_track.data['EventList'] = (
+            [{'id': 'ID#%04d' % (i), 'time': e} for i, e in enumerate(event_list)]
+            )
+        for i, h in enumerate(handle_detail):
+            self.current_track.data['Details'].update({'h#%04d' % (i): h})
+        for i, e in enumerate(events_detail):
+            self.current_track.data['Events'].update({'ID#%04d' % (i): e})
+        return 0
+        
+    
+    def select_track(self, n):
+        """操作対象トラックを変更する
+        n: トラック番号
+        """
+        if n < self.track_num:
+            self.current_track = self.normal_tracks[n]
 
     def apply_rule(self, rule_i):
         """ルールを適用する
@@ -555,7 +627,8 @@ class VSQEditor(object):
             return True
 
         def check_notes(notes, anotes):
-            if notes is None: return True
+            if notes is None:
+                return True
             relative_notes = [0] + [anote['note'] - anotes[i]['note'] 
                                     for i, anote in enumerate(anotes[1:])]
             return relative_notes == notes
@@ -595,10 +668,13 @@ class VSQEditor(object):
         return rule_dic
 
     def __set_param_curve(self, ptype, curve, s, e, stretch):
-        if s is None or s <= self.start_time: s = self.start_time + 1     
-        if e is None or e >= self.end_time: e = self.end_time + 1     
+        if s == None or s <= self.start_time:
+            s = self.start_time + 1     
+        if e == None or self.end_time <= e:
+            e = self.end_time + 1     
         length = e - s
-        if length < 0 or curve is None: return False
+        if length < 0 or curve == None:
+            return False
         len_ratio = float(length)/len(curve)
 
         #curveをスケールしながらパラメータを生成
@@ -614,14 +690,17 @@ class VSQEditor(object):
         new_bp.append({'time':e+1, 'value':end_value})
 
         param = self.current_track.data[ptype]
-        for p in select(ptype, s, e): param.remove(p)  #選択範囲の元の波形の除去
+        for p in select(ptype, s, e):
+            param.remove(p)  #選択範囲の元の波形の除去
         param.extend(new_bp)  #新しい波形の追加
         param.sort()
         return True
 
     def __get_param_curve(self, ptype, s, e):
-        if s==None: s = self.start_time
-        if e==None: e = self.end_time
+        if s == None:
+            s = self.start_time
+        if e == None:
+            e = self.end_time
         return [ev for ev in self.current_track.data[ptype] if s <= ev['time'] <= e]
     
 
@@ -637,8 +716,8 @@ class VSQEditor(object):
 '''
 if __name__ == '__main__':
     editor = VSQEditor(binary=open('out.vsq', 'r').read())
-    enable = [6,3]
-    
+    enable = [7]
+
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable: 
         print "anotes:"
@@ -679,3 +758,40 @@ if __name__ == '__main__':
     #3.編集結果をunparseして書きこむ
     if 3 in enable:
         editor.unparse('out.vsq')   
+
+    # ノート挿入テスト
+    if 7 in enable:
+        i = 10
+        note = {
+            'lyric': {
+                'lyrics': 'a',
+                'phonetic': 'a',
+                'protect': '0',
+                'unknown1': '0.000000',
+                'unknown2': '0'
+                },
+            'event': {
+                "PMBendDepth": "8",
+                "PMBendLength": "14",
+                "PMbPortamentoUse": "0",
+                "DEMdecGainRate": "50",
+                "Type": "Anote",
+                "Length": "120",
+                "DEMaccent": "50",
+                "Dynamics": "64"
+                }
+            }
+
+        print "----before insert----"
+        pp(editor.current_track.data['EventList'][i-3:i+3])
+        for i in range(i-3, i+3, 1):
+            s = "h#%04d" % i
+            pp(editor.current_track.data['Details'][s])
+
+        print "----after insert----"
+        editor.insert_note(note, i)
+        pp(editor.current_track.data['EventList'][i-3:i+3])
+        for i in range(i-3, i+3, 1):
+            s = "h#%04d" % i
+            pp(editor.current_track.data['Details'][s])
+
