@@ -4,6 +4,75 @@ import re
 from struct import *
 
 
+class Singer(object):
+    def __init__(self, time, params):
+        self.time = time
+        self.params = params
+
+    def get_event(self):
+        return {'Type': 'Singer', 'time': str(self.time)}
+
+    def get_singer_event(self):
+        return self.params
+
+
+class Anote(object):
+    d_options = {
+            'Dynamics': 128,
+            'PMBendDepth': 40,
+            'PMBendLength': 40,
+            'PMbPortamentoUse': 0,
+            'DEMdecGainRate': 40,
+            'DEMaccent': 40,
+            'VibratoDelay': 0}
+    def __init__(self, time, note, lyric=u"a", length=120,
+            vibrato=None, options=d_options):
+        self.time = time
+        self.note = note
+        self.length = length
+        self.set_lyric(lyric)
+        self.vibrato = vibrato
+        self.options = options
+
+    #歌詞と発音記号を同期させたいので
+    def set_lyric(self, lyric):
+        self._lyric = lyric
+        self._phonetic = tools.lyric2phonetic(lyric)
+
+    def get_lyric(self, opt='l'):
+        if opt == 'l':
+            return self._lyric
+        elif opt == 'p':
+            return self._phonetic
+
+    def get_event(self):
+        event = {
+            'Type': 'Anote',
+            'time': str(self.time),
+            'Length': str(self.length),
+            'Note#': str(self.note)
+            }
+        event.update(self.options)
+        return event
+
+    def get_lyric_event(self):
+        lyric_event = {
+            'lyric': self._lyric.encode('shift-jis'),
+            'phonetic': self._phonetic.encode('shift-jis'),
+            'lyric_delta': "%8.6f" % 0.000000,
+            'protect': "0"
+            }
+        #ConsonantAdjustmentを追加
+        phonetics = self._phonetic.split(' ')
+        boinrxp = re.compile('aiMeo')
+        for i, p in enumerate(phonetics): 
+            lyric_event['ca'+str(i)] = 0 if boinrxp.match(p) else 64
+        return lyric_event
+
+    def get_vibrato_event(self):
+        return self.vibrato
+
+
 class NormalTrack(object):
     """ノーマルトラック（マスタートラック以外）を扱うクラス"""
     def __init__(self, fp):
@@ -41,12 +110,9 @@ class NormalTrack(object):
                     data['text'] += fp.read(mevent[2]-8)
 
         data.update(self.__parse_text(data['text']))
-        anote_events = self.__create_anote_events(data)
-        lyrics = [anote['lyrics'] for anote in anote_events]
-
-        self.lyrics = unicode(''.join(lyrics), 'shift-jis')
         self.data = data
-        self.anote_events = anote_events
+        self.phonetics = ''.join([a.get_lyric('p') for a in self.anotes])
+        self.lyrics = ''.join([a.get_lyric() for a in self.anotes])
 
     def unparse(self):
         """ノーマルトラックをアンパースする
@@ -82,10 +148,9 @@ class NormalTrack(object):
         data = {
             "Common": {},
             "Master": {},
-            "Mixer": {},
-            "EventList": [],
-            "Events": {}, #ID#xxxxタグ
-            "Details": {}} #h#xxxxタグ
+            "Mixer": {}}
+        events = {}
+        details = {}
 
         #テキスト情報の解析
         current_tag = ''
@@ -101,8 +166,7 @@ class NormalTrack(object):
                 #EventListタグ
                 elif current_tag == "EventList":
                     time, eventid  = line.split('=')
-                    event = {'time': time, 'id': eventid}
-                    data['EventList'].append(event)
+                    events[eventid] = {'time': time}
                 #各パラメータカーブタグ
                 elif re.compile('.+BPList').match(current_tag):
                     if not data.get(current_tag):
@@ -112,39 +176,27 @@ class NormalTrack(object):
                                                'value': int(value)})
                 #ID#xxxxタグ
                 elif re.compile('ID#[0-9]{4}').match(current_tag):
-                    if not data['Events'].get(current_tag):
-                        data['Events'][current_tag] = {}
                     key, value = line.split('=')
-                    data['Events'][current_tag][key] = value
+                    events[current_tag][key] = value
                 #h#xxxxタグ
                 elif re.compile('h#[0-9]{4}').match(current_tag):
-                    if not data['Details'].get(current_tag):
-                        data['Details'][current_tag] = {}
+                    if not details.get(current_tag):
+                        details[current_tag] = {}
                     lines = len(line.split(','))
+                    #ビブラート情報、歌手情報
                     if lines == 1:
                         key, value = line.split('=')
-                        data['Details'][current_tag][key] = value
+                        details[current_tag][key] = value
                     #歌詞情報
                     else:
                         l0 = line.split('=')[1].split(',')
-                        d = {}
-                        #2パターンあった
-                        if len(l0) == 5:
-                            d = {
-                                'lyrics': l0[0][1:-1],
-                                'phonetic': l0[1][1:-1],
-                                'unknown1': l0[2],
-                                'unknown2': l0[3],
-                                'protect': l0[4]}
-                        else:
-                            d = {
-                                'lyrics': l0[0][1:-1],
-                                'phonetic': l0[1][1:-1],
-                                'unknown1': l0[2],
-                                'unknown2': l0[3],
-                                'unknown3': l0[4],
-                                'protect': l0[5]}
-                        data['Details'][current_tag] = d
+                        #lyricとprotectがあれば他は自動的に決まる？
+                        details[current_tag] = {
+                                'lyric': unicode(l0[0][1:-1],"shift-jis"),
+                                'protect': unicode(l0[-1],"shift-jis")}
+
+        data.update({'EOS':events.pop('EOS')['time']})
+        self.anotes, self.singers = self.__pack_events(events, details)
         return data
 
     def __unparse_text(self):
@@ -156,25 +208,33 @@ class NormalTrack(object):
             text += '[%s]\n' % tag
             for item in data[tag].items():
                 text += "%s=%s\n" % item
-        #EventList        
-        text += '[EventList]\n'
-        for event in data['EventList']:
-            text += "%(time)s=%(id)s\n" % event
-        #Events
-        for key, value in data['Events'].items():
-            text += '[%s]\n' % key
-            for item in value.items():
-                text += "%s=%s\n" % item
-        #Details
-        for key, value in data['Details'].items():
-            text += '[%s]\n' % key
-            if value.keys().count('lyrics') == 0:
-                for item in value.items():
-                    text += "%s=%s\n" % item
-            elif value.keys().count('unknown3') == 0:
-                text += '''L0=\"%(lyrics)s\",\"%(phonetic)s\",%(unknown1)s,%(unknown2)s,%(protect)s\n''' % value
+
+        #Event関連
+        events, details = self.__unpack_events(self.anotes, self.singers)
+        event_text = ''
+        detail_text = ''
+        eventlist_text = '[EventList]\n'
+        for i, e in enumerate(events):
+            event_id = "ID#%04d" % i
+            eventlist_text += "%s=%s\n" % (e.pop('time'), event_id)
+            event_text += "[%s]\n" % event_id
+            for item in e.items(): 
+                event_text += "%s=%s\n" % item
+        eventlist_text += "%s=%s\n" % (self.data['EOS'],'EOS')
+
+        for i, d in enumerate(details):
+            detail_id = "h#%04d" % i
+            detail_text += "[%s]\n" % detail_id
+            if d.keys().count('lyric') == 0:
+                for item in d.items():
+                    detail_text += "%s=%s\n" % item
+            elif d.keys().count('ca1') == 0:
+                detail_text += '''L0=\"%(lyric)s\",\"%(phonetic)s\",%(lyric_delta)s,%(ca0)s,%(protect)s\n''' % d
             else:
-                text += '''L0=\"%(lyrics)s\",\"%(phonetic)s\",%(unknown1)s,%(unknown2)s,%(unknown3)s,%(protect)s\n''' % value
+                detail_text += '''L0=\"%(lyric)s\",\"%(phonetic)s\",%(lyric_delta)s,%(ca0)s,%(ca1)s,%(protect)s\n''' % d
+
+        text += eventlist_text + event_text + detail_text
+
         #any BPList                         
         bprxp = re.compile('.+BPList')
         bptags = [tag for tag in data.keys() if bprxp.match(tag)]
@@ -185,24 +245,54 @@ class NormalTrack(object):
 
         return text
     
-    def __create_anote_events(self, data):
-        """[ID,歌詞,発音,音高,開始時間,終了時間]
-            でまとめられた音符イベントのリストが生成される
-            ルール適用部分の参考素材になりそうな予定
+    def __pack_events(self, events, details):
         """
-        anote_events = []
-        for event in data['EventList'][:-1]:
-            if data['Events'][event['id']]['Type'] == 'Anote': 
-                e = data['Events'][event['id']] 
-                d = data['Details'][e['LyricHandle']]
-                es ={
-                    'id': event['id'],
-                    'start_time': int(event['time']),
-                    'lyrics': d['lyrics'],
-                    'phonetic': d['phonetic'],
-                    'note': int(e['Note#']),
-                    'end_time': int(event['time'])+int(e['Length'])}
-                anote_events.append(es)
-        return anote_events
+        eventを扱いやすいようにpackする
+        """
+        anotes = []
+        singers = []
+        for e in events.values():
+            time = e.pop('time')
+            t = e.pop('Type')
+            if t == 'Anote': 
+                lyric = details[e.pop('LyricHandle')]
+                vibrato = details.pop(e.pop('VibratoHandle',None), None)
+                params = {
+                    'time': int(time),
+                    'note': int(e.pop('Note#')),
+                    'lyric':
+                    tools.phonetic2lyric(tools.lyric2phonetic(lyric['lyric'])),
+                    'length': int(e.pop('Length')),
+                    'vibrato': vibrato,
+                    'options': e}
+                anotes.append(Anote(**params))
+            elif t == 'Singer':
+                icon = details[e.pop('IconHandle')]
+                singers.append(Singer(time, icon))
+        anotes.sort(key=lambda x: x.time)
+        singers.sort(key=lambda x: x.time)
+        return anotes, singers
+
+    def __unpack_events(self, anotes, singers):
+        packed = anotes[:]
+        packed.extend(singers)
+        packed.sort(key=lambda x:int(x.time))
+
+        details = []
+        events = []
+        for p in packed:
+            e = p.get_event()
+            if e['Type'] == 'Anote':
+                e.update({'LyricHandle': 'h#%04d' % len(details)})
+                details.append(p.get_lyric_event())
+                vibrato = p.get_vibrato_event()
+                if vibrato:
+                    e.update({'VibratoHandle': 'h#%04d' % len(details)})
+                    details.append(vibrato)
+            elif e['Type'] == 'Singer':
+                e.update({'IconHandle': 'h#%04d' %len(details)})
+                details.append(p.get_singer_event())
+            events.append(e)
+        return events, details
 
 

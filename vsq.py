@@ -38,7 +38,7 @@ class VSQEditor(object):
         #トラックの終端時間（最後のノートイベントの終端時間）を求める
         self.end_time = self.start_time
         for track in self.normal_tracks:
-            et = track.anote_events[-1]['end_time']
+            et = track.anotes[-1].time + track.anotes[-1].length
             self.end_time = max(et, self.end_time)
 
         self.select_track(0)
@@ -83,11 +83,12 @@ class VSQEditor(object):
             "note":音高（MIDIの規格に基づく）
             }
         """
-        if s==None: s = self.start_time
-        if e==None: e = self.end_time
-        anotes = self.current_track.anote_events
-        return [ev for ev in anotes
-                if s <= ev['end_time'] and ev['start_time'] <= e]
+        if s is None:
+            s = self.start_time
+        if e is None:
+            e = self.end_time
+        anotes = self.current_track.anotes
+        return [a for a in anotes if s <= a.time + a.length and a.time <= e]
 
     def get_anotes_f_lyric_i(self, s=None, e = None):
         lyrics = self.get_lyrics()
@@ -97,7 +98,7 @@ class VSQEditor(object):
 
         s_index = s - len(smallrxp.findall(lyrics[:s]))
         e_index = e - len(smallrxp.findall(lyrics[:e]))
-        return self.current_track.anote_events[s_index:e_index]
+        return self.current_track.anotes[s_index:e_index]
     
     def get_pitch_curve(self, s=None, e=None):
         """sからeまでのピッチ曲線を取得する
@@ -149,10 +150,8 @@ class VSQEditor(object):
         anotes:変更対象となる音符イベント（リスト）
         length:変更後の音符の長さ
         """
-        events = self.current_track['Events']
-        for anote in anotes:
-            events[anote['id']]['length'] = length
-            anote['end_time'] = anote['start_time'] + length
+        for a in anotes:
+            a.length = length
         
     def select_track(self, track_num):
         """操作対象トラックを変更する
@@ -169,13 +168,13 @@ class VSQEditor(object):
                                       rule_i['e_index'])
         for i, curve in enumerate(rule_i['rule']['dyn_curves']):
             self.set_dynamics_curve(curve['curve'],
-                                anotes[i]['start_time'],
-                                anotes[i]['end_time'],
+                                anotes[i].time,
+                                anotes[i].time + anotes[i].length,
                                 curve['stretch'])
         for i, curve in enumerate(rule_i['rule']['pit_curves']):
             self.set_pitch_curve(curve['curve'],
-                                anotes[i]['start_time'],
-                                anotes[i]['end_time'],
+                                anotes[i].time,
+                                anotes[i].time + anotes[i].length,
                                 curve['stretch'])
 
     def unapply_rule(self, rule_i):
@@ -183,8 +182,8 @@ class VSQEditor(object):
         rule_i: get_rule_candsメソッドによって得られたルール適用候補
         """
         anotes = self.get_anotes_f_lyric_i(rule_i['s_index'],rule_i['e_index'])
-        start_time = anotes[0]['start_time']
-        end_time = anotes[-1]['end_time']
+        start_time = anotes[0].time
+        end_time = anotes[-1].time + anotes[-1].length
         self.set_dynamics_curve(rule_i['undyn'], 
                                 start_time,
                                 end_time)
@@ -204,15 +203,15 @@ class VSQEditor(object):
 
         def is_connected(anotes):
             if len(anotes) <= 1: return True 
-            for i, anote in enumerate(anotes[1:]):
-                if anote['start_time'] - anotes[i]['end_time'] > 50:
+            for i, a in enumerate(anotes[1:]):
+                if a.time - anotes[i].time + anotes[i].length > 50:
                     return False
             return True
 
         def check_notes(notes, anotes):
             if notes is None: return True
-            relative_notes = [0] + [anote['note'] - anotes[i]['note'] 
-                                    for i, anote in enumerate(anotes[1:])]
+            relative_notes = [0] + [a.note - anotes[i].note 
+                                    for i, a in enumerate(anotes[1:])]
             return relative_notes == notes
 
         match_len = lambda x, y: (not x or not y) or len(x)==len(y)
@@ -234,11 +233,11 @@ class VSQEditor(object):
                 continue
             else:
                 u_dyn_curve = self.get_dynamics_curve(
-                        match_anotes[0]['start_time'],
-                        match_anotes[-1]['end_time'])
+                        match_anotes[0].time,
+                        match_anotes[-1].time + match_anotes[-1].length)
                 u_pit_curve = self.get_pitch_curve(
-                        match_anotes[0]['start_time'],
-                        match_anotes[-1]['end_time'])
+                        match_anotes[0].time,
+                        match_anotes[-1].time + match_anotes[-1].length)
                 rule_i = {"instance_id":"I"+str(i),
                         "rule":rule,
                         "s_index":s,
@@ -250,10 +249,13 @@ class VSQEditor(object):
         return rule_dic
 
     def __set_param_curve(self, ptype, curve, s, e, stretch):
-        if s is None or s <= self.start_time: s = self.start_time + 1     
-        if e is None or e >= self.end_time: e = self.end_time + 1     
+        if s is None or s <= self.start_time: 
+            s = self.start_time + 1     
+        if e is None or e >= self.end_time:
+            e = self.end_time + 1     
         length = e - s
-        if length < 0 or curve is None: return False
+        if length < 0 or curve is None:
+            return False
         len_ratio = float(length)/len(curve)
 
         #curveをスケールしながらパラメータを生成
@@ -292,7 +294,9 @@ class VSQEditor(object):
 '''
 if __name__ == '__main__':
     editor = VSQEditor(binary=open('out.vsq', 'r').read())
-    enable = [1,6,3]
+    enable = [3]
+    print editor.current_track.lyrics
+    print editor.current_track.phonetics
     
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable: 
