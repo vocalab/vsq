@@ -11,9 +11,10 @@ from struct import *
 class VSQEditor(object):
 
     def __init__(self, filename=None, binary=None):
-        if filename: self.parse(filename=filename)
-        elif binary: self.parse(binary=binary)
-        
+        if filename:
+            self.parse(filename=filename)
+        elif binary:
+            self.parse(binary=binary)
 
     def parse(self, filename=None, binary=None):
         """VSQファイルをパースする
@@ -21,7 +22,6 @@ class VSQEditor(object):
         binary:VSQファイルのバイナリデータ
         引数はfilename,binaryのどちらかを指定
         """
-
         #各チャンクのパース
         self._fp = open(filename, 'r') if filename else tools.FakeFile(binary)
         self.header = Header(self._fp)
@@ -204,7 +204,7 @@ class VSQEditor(object):
         def is_connected(anotes):
             if len(anotes) <= 1: return True 
             for i, a in enumerate(anotes[1:]):
-                if a.time - anotes[i].time + anotes[i].length > 50:
+                if a.time - (anotes[i].time + anotes[i].length) > 50:
                     return False
             return True
 
@@ -232,12 +232,15 @@ class VSQEditor(object):
                 not check_notes(rule['relative_notes'],match_anotes)):
                 continue
             else:
-                u_dyn_curve = self.get_dynamics_curve(
+                u_dyn = self.get_dynamics_curve(
                         match_anotes[0].time,
                         match_anotes[-1].time + match_anotes[-1].length)
-                u_pit_curve = self.get_pitch_curve(
+                u_pit = self.get_pitch_curve(
                         match_anotes[0].time,
                         match_anotes[-1].time + match_anotes[-1].length)
+                tools.pp(u_dyn)
+                u_dyn_curve = [v['value'] for v in u_dyn]
+                u_pit_curve = [v['value'] for v in u_pit]
                 rule_i = {"instance_id":"I"+str(i),
                         "rule":rule,
                         "s_index":s,
@@ -254,7 +257,7 @@ class VSQEditor(object):
         if e is None or e >= self.end_time:
             e = self.end_time + 1     
         length = e - s
-        if length < 0 or curve is None:
+        if length < 0 or not curve:
             return False
         len_ratio = float(length)/len(curve)
 
@@ -293,10 +296,8 @@ class VSQEditor(object):
 5.音程の相対値を表示する
 '''
 if __name__ == '__main__':
-    editor = VSQEditor(binary=open('out.vsq', 'r').read())
-    enable = [3]
-    print editor.current_track.lyrics
-    print editor.current_track.phonetics
+    editor = VSQEditor(binary=open('test.vsq', 'r').read())
+    enable = [6,3]
     
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable: 
@@ -331,9 +332,17 @@ if __name__ == '__main__':
     
     #6.ルール適用テスト
     if 6 in enable:
-        rule_cands = editor.get_rule_cands(zuii_rule)
+        rule_cands = editor.get_rule_cands(san_rule)
+        print "\nbefore"
+        print editor.get_dynamics_curve(20600,21000)
         for rule_i in rule_cands.values():
             editor.apply_rule(rule_i)
+        print "\napplyied"
+        print editor.get_dynamics_curve(20600,21000)
+        for rule_i in rule_cands.values():
+            editor.unapply_rule(rule_i)
+        print "\nunapplyed"
+        print editor.get_dynamics_curve(20600,21000)
 
     #3.編集結果をunparseして書きこむ
     if 3 in enable:

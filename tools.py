@@ -77,8 +77,10 @@ phonetic_table = {
         u"びゃ":u"b' a",u"びゅ":u"b' M",u"びぇ":u"b' e", u"びょ":u"b' e",
         u"ぴゃ":u"p' a",u"ぴゅ":u"p' M",u"ぴぇ":u"p' e",u"ぴょ":u"p' o"
     }
+
 lyric_table = dict(zip(phonetic_table.values(),phonetic_table.keys()))
 
+#ローマ字の歌詞が入力されたとき用
 phonetic_table.update({
     u"a":u"a",u"i":u"i",u"u":u"M",u"e":u"e",u"o":u"o",
     u"n":u"n"

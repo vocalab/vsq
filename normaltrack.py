@@ -18,13 +18,12 @@ class Singer(object):
 
 class Anote(object):
     d_options = {
-            'Dynamics': 128,
-            'PMBendDepth': 40,
-            'PMBendLength': 40,
+            'Dynamics': 64,
+            'PMBendDepth': 8,
+            'PMBendLength': 0,
             'PMbPortamentoUse': 0,
-            'DEMdecGainRate': 40,
-            'DEMaccent': 40,
-            'VibratoDelay': 0}
+            'DEMdecGainRate': 50,
+            'DEMaccent': 50}
     def __init__(self, time, note, lyric=u"a", length=120,
             vibrato=None, options=d_options):
         self.time = time
@@ -53,6 +52,9 @@ class Anote(object):
             'Note#': str(self.note)
             }
         event.update(self.options)
+        if self.vibrato:
+            vd = int((1-int(self.vibrato['Length'])/100.0)*self.length/5) * 5
+            event['VibratoDelay'] = str(vd)
         return event
 
     def get_lyric_event(self):
@@ -110,7 +112,11 @@ class NormalTrack(object):
                     data['text'] += fp.read(mevent[2]-8)
 
         data.update(self.__parse_text(data['text']))
+        anotes, singers = self.__pack_events(data['Events'], data['Details'])
+
         self.data = data
+        self.anotes = anotes
+        self.singers = singers
         self.phonetics = ''.join([a.get_lyric('p') for a in self.anotes])
         self.lyrics = ''.join([a.get_lyric() for a in self.anotes])
 
@@ -148,9 +154,10 @@ class NormalTrack(object):
         data = {
             "Common": {},
             "Master": {},
-            "Mixer": {}}
-        events = {}
-        details = {}
+            "Mixer": {},
+            "Events": {},
+            "Details": {}
+            }
 
         #テキスト情報の解析
         current_tag = ''
@@ -166,7 +173,7 @@ class NormalTrack(object):
                 #EventListタグ
                 elif current_tag == "EventList":
                     time, eventid  = line.split('=')
-                    events[eventid] = {'time': time}
+                    data['Events'][eventid] = {'time': time}
                 #各パラメータカーブタグ
                 elif re.compile('.+BPList').match(current_tag):
                     if not data.get(current_tag):
@@ -177,26 +184,29 @@ class NormalTrack(object):
                 #ID#xxxxタグ
                 elif re.compile('ID#[0-9]{4}').match(current_tag):
                     key, value = line.split('=')
-                    events[current_tag][key] = value
+                    data['Events'][current_tag][key] = value
                 #h#xxxxタグ
                 elif re.compile('h#[0-9]{4}').match(current_tag):
-                    if not details.get(current_tag):
-                        details[current_tag] = {}
+                    if not data['Details'].get(current_tag):
+                        data['Details'][current_tag] = {}
                     lines = len(line.split(','))
                     #ビブラート情報、歌手情報
                     if lines == 1:
                         key, value = line.split('=')
-                        details[current_tag][key] = value
+                        data['Details'][current_tag][key] = value
                     #歌詞情報
                     else:
                         l0 = line.split('=')[1].split(',')
                         #lyricとprotectがあれば他は自動的に決まる？
-                        details[current_tag] = {
+                        data['Details'][current_tag] = {
                                 'lyric': unicode(l0[0][1:-1],"shift-jis"),
                                 'protect': unicode(l0[-1],"shift-jis")}
+        if not data.has_key('PitchBendBPlist'):
+            data['PitchBendBPlist'] = {'time':0, 'value': 0}
+        if not data.has_key('DynamicsBPList'):
+            data['DynamicsBPList'] = {'time': 0, 'value': 0}
 
-        data.update({'EOS':events.pop('EOS')['time']})
-        self.anotes, self.singers = self.__pack_events(events, details)
+        data['EOS'] = data['Events'].pop('EOS')['time']
         return data
 
     def __unparse_text(self):
@@ -260,8 +270,7 @@ class NormalTrack(object):
                 params = {
                     'time': int(time),
                     'note': int(e.pop('Note#')),
-                    'lyric':
-                    tools.phonetic2lyric(tools.lyric2phonetic(lyric['lyric'])),
+                    'lyric': lyric['lyric'],
                     'length': int(e.pop('Length')),
                     'vibrato': vibrato,
                     'options': e}
