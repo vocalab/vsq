@@ -1,5 +1,5 @@
-/*.pyc
-/app.yaml
-
+*.pyc
 .DS_Store*
+
 Icon?
+/app.yaml
