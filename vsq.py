@@ -515,16 +515,16 @@ class VSQEditor(object):
             events[anote['id']]['length'] = length
             anote['end_time'] = anote['start_time'] + length
     
-
     def insert_note(self, note, index):
         """指定したインデックスの箇所に音符を挿入する
         === Args
-        note: 挿入する音符イベント↑
+        note: 挿入する音符イベント
         index: EventListのインデックス、おそらく歌詞の挿入としてはこっちのほうが自然
         === Returns
         0: 成功
         1: 失敗
         """
+        
         def invalid_arguments(note, index):
             """引数のチェック"""
             i = False if 0 <= index <= len(self.current_track.data["EventList"]) else True
@@ -538,7 +538,7 @@ class VSQEditor(object):
         if invalid_arguments(note, index):
             return 1
         
-        # あとでIDとかhを振り直せば楽じゃねっておもった
+        # あとでIDとかhを振り直す
         event_list = [e['time'] for e in self.current_track.data['EventList']]
         handle_detail = [e[1] for e in sorted(self.current_track.data['Details'].items())]
         events_detail = [e[1] for e in sorted(self.current_track.data['Events'].items())]
@@ -554,8 +554,21 @@ class VSQEditor(object):
         events_detail.insert(index, note['event'])
         handle_detail.insert(handle_index, note['lyric'])
         event_list.insert(index, event_list[index])
+        self.current_track.anote_events.insert(index - 2, {
+                'id': 'ID#%04d' % (index - 1),
+                'lyrics': note['lyric']['lyrics'],
+                'note': int(note['event']['Note#']),
+                'phonetic': note['lyric']['phonetic'],
+                'start_time': self.current_track.anote_events[index-2]['start_time'],
+                'end_time': self.current_track.anote_events[index-2]['start_time'] + int(note['event']['Length']),
+                })
 
         # 追加するノートの長さ分、EventListの時間をずらす
+        l = int(note['event']['Length'])
+        for i in range(index-1, len(self.current_track.anote_events), 1):
+            self.current_track.anote_events[i]['start_time'] += l
+            self.current_track.anote_events[i]['end_time'] += l
+            
         for i in range(index+1, len(event_list), 1):
             event_list[i] = int(event_list[i]) + int(note['event']['Length'])
 
@@ -569,7 +582,6 @@ class VSQEditor(object):
         for i, e in enumerate(events_detail):
             self.current_track.data['Events'].update({'ID#%04d' % (i): e})
         return 0
-        
     
     def select_track(self, n):
         """操作対象トラックを変更する
