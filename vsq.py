@@ -6,21 +6,54 @@ import pprint
 
 __author__ = "大野誠<makoto.pingpong1016@gmail.com>"
 __status__ = "test"
-__date__ = "2012/02/02"
-__version__ = 0.01
-
+__date__ = "2012/02/13"
+__version__ = 0.02
 
 def pp(obj):
-    """オブジェクトを綺麗に表示する。
+    """オブジェクトを綺麗に表示する 
     """
     pp = pprint.PrettyPrinter(indent=4, width=180)
     str = pp.pformat(obj)
     print str
 
-class FakeFile(object):
-    """文字列アクセスをファイルアクセスのように
-        動作させるクラス
+def pp_str(obj):
+    """整形された obj のデータを返す
     """
+    pp = pprint.PrettyPrinter(indent=4, width=180)
+    return pp.pformat(obj)
+
+def get_dtime(fp):
+    """デルタタイムを取得する
+    fp:vsqファイルポインタ or FakeFile インスタンス
+    戻り値:デルタタイム
+    ※fpはデルタタイムのところまでシークしておく必要がある
+    """
+    byte = ord(fp.read(1))
+    dtime = byte & 0x7f
+    while byte & 0x80:
+        dtime <<= 7
+        byte = ord(fp.read(1))
+        dtime += byte & 0x7f
+    return dtime
+
+
+def dtime2binary(dtime):
+    """デルタタイムをバイナリに変換する
+    dtime:デルタタイム
+    戻り値:デルタタイムのバイナリ
+    """
+    bins = []
+    calc_1b = lambda b: (b & 0x7f) | 0x80 if bins else b & 0x7f 
+    while dtime > 0x00:
+        b = calc_1b(dtime)
+        bins.insert(0,b)
+        dtime >>= 7
+    binary = pack(str(len(bins))+'B', *bins) if bins else '\x00'
+    return binary
+
+
+class FakeFile(object):
+    """文字列アクセスをファイルアクセスのように動作させるクラス"""
     def __init__(self, string=''):
         self._string = string
         self._index = 0
@@ -30,389 +63,376 @@ class FakeFile(object):
         self._index += byte
         return string
 
-class VSQEditor(object):
-    """VSQファイルを扱うモジュール。
-        超簡素かつ粗雑な作り。
-        使い方は一番下のテストコードで察してください。
-    """
-    def __init__(self, filename=None, string=None):
-        if filename: self.parse(filename=filename)
-        elif string: self.parse(string=string)
-        
-    def __get_dtime(self):
-        dtime = 0
-        byte = ord(self._f.read(1))
-        dtime += (byte & 0x7f)
-        while byte & 0x80:
-            dtime  = dtime << 7
-            byte = ord(self._f.read(1))
-            dtime += (byte & 0x7f)
-        return dtime
-    
-    def __dtime2binary(self, dtime):
-        bins = []
-        byte = dtime
-        calc_1b = lambda b:(b & 0x7f) if bins else ((b & 0x7f) | 0x80)
-        while byte >= 0x80:
-            b = calc_1b(byte)
-            bins.append(b)
-            byte = byte >> 7
-        b = calc_1b(byte)
-        bins.append(b)
-        bins.reverse()
-        binary = ''
-        for b in bins: binary += pack('B', b)
-        return binary
-        
-    def __parse_header(self):
-        if self._f.read(4) != "MThd":
-            print "header not found."
-            return {}
-        header = {'size': unpack('>i', self._f.read(4))[0],
-                  'format': unpack('>h', self._f.read(2))[0],
-                  'track_num': unpack('>h', self._f.read(2))[0],
-                  'time_div': unpack('>h', self._f.read(2))[0]}
-        return header
+    def tell(self):
+        return self._index
 
-    def __unparse_header(self):
-        binary = 'MThd' + pack('>ihhh',
-                               self.header['size'],
-                               self.header['format'],
-                               self.header['track_num'],
-                               self.header['time_div'])
+
+class Header(object):
+    """MIDIヘッダを扱うクラス"""
+    def __init__(self, fp):
+        self.parse(fp)
+
+    def parse(self, fp):
+        """MIDIヘッダをパースする
+        fp:vsqファイルポインタ or FakeFileインスタンス
+        """
+        data = {
+            'MThd': unpack('>4s', fp.read(4))[0],
+            'size': unpack('>i', fp.read(4))[0],
+            'format': unpack('>h', fp.read(2))[0],
+            'track_num': unpack('>h', fp.read(2))[0],
+            'time_div': unpack('>h', fp.read(2))[0]}
+        self.data = data
+
+    def unparse(self):
+        """MIDIヘッダをアンパースする
+        戻り値:MIDIヘッダバイナリ
+        """
+        binary = pack(
+            ">4si3h",
+            self.data['MThd'],
+            self.data['size'],
+            self.data['format'],
+            self.data['track_num'],
+            self.data['time_div'])
         return binary
 
-    def __parse_master_track(self):
+
+class MasterTrack(object):
+    def __init__(self, fp):
+        self.parse(fp)
+
+    def parse(self, fp):
+        """vsqファイルのマスタートラック部分をパースする
+        fp:vsqファイルポインタ or FakeFile インスタンス
+        ※fpはマスタートラック部分までシークしておく必要がある
+        """
         #トラックチャンクヘッダの解析
-        if self._f.read(4) != "MTrk":
-            print "Master Track not found."
-            return {}
-        master_track = {}
-        master_track['size'] = unpack('>i', self._f.read(4))[0]
-        master_track['MetaEvents'] = []
+        data = {
+            "MTrk": unpack(">4s", fp.read(4))[0],
+            "size": unpack('>i', fp.read(4))[0],
+            "metaevents": []}
+        
         #MIDIイベントの解析
-        dtime = self.__get_dtime()
-        mevent = unpack('BBB', self._f.read(3))
-        while mevent[1] != 0x2f:
-            #テンポイベント
-            if mevent[1] == 0x51:
-                contents = unpack('>I', '\x00'+self._f.read(3))[0]
-                metaevent = {'dtime': dtime,
-                             'type': 'tempo',
-                             'tb': mevent[1],
-                             'len': 3,
-                             'contents': contents}
-                master_track['MetaEvents'].append(metaevent)    
-            #トラックネームイベント
-            elif mevent[1] == 0x03:
-                metaevent = {'dtime': dtime,
-                             'type': 'TrackName',
-                             'tb': mevent[1],
-                             'len': mevent[2],
-                             'contents': self._f.read(mevent[2])}
-                master_track['MetaEvents'].append(metaevent)
-            #拍・拍子イベント
-            elif mevent[1] == 0x58:
-                metaevent = {'dtime': dtime,
-                             'type': 'beat',
-                             'tb': mevent[1],
-                             'len': 4,
-                             'contents': unpack('bbbb', self._f.read(4))}
-                master_track['MetaEvents'].append(metaevent)
-                #プリメジャータイムを求める
-                if dtime == 0:
-                    nn = metaevent['contents'][0]
-                    dd = 2 ** metaevent['contents'][1]
-                    premtime = nn/float(dd)*16*self.header['time_div']
-                    master_track['startTime'] = premtime
-            dtime = self.__get_dtime()
-            mevent = unpack('BBB', self._f.read(3))
-        return master_track
+        while True:
+            dtime = get_dtime(fp)
+            midi = unpack('3B', fp.read(3))
+            mevent = {
+                    'dtime': dtime,
+                    'type': midi[1],
+                    'len': midi[2],
+                    'data': fp.read(midi[2])}
+            data['metaevents'].append(mevent)
+            t = mevent['type']
+            if t == 0x2f:    #End of Trak
+                break
+            elif t == 0x51:  #Tempo
+                self.tempo = unpack('>I', '\x00'+mevent['data'])[0]
+            elif t == 0x03:  #Track Name
+                self.name = mevent['data']
+            elif t == 0x58:  #Beat
+                self.beat = unpack('4b', mevent['data'])
+        self.data = data
 
-    def __unparse_master_track(self):
-        binary = 'MTrk' + pack('>I',self.master_track['size'])
-        for event in self.master_track['MetaEvents']:
-            binary += self.__dtime2binary(event['dtime'])
-            binary += pack('cBB',
-                            '\xff',
-                            event['tb'],
-                            event['len'])
-            if event['tb'] == 0x51:
-                tempo = event['contents']
-                binary += pack('>BBB',
-                                (tempo & 0x00ff0000) >> 16,
-                                (tempo & 0x0000ff00) >> 8,
-                                (tempo & 0x000000ff))
-            elif event['tb'] == 0x03:
-                binary += event['contents']
-            elif event['tb'] == 0x58:
-                for b in event['contents']: binary += pack('b', b)
-        binary += '\x00\xff\x2f\x00'
+    def unparse(self):
+        """マスタートラックをアンパースする
+        戻り値:マスタートラックバイナリ
+        """
+        data = self.data
+        binary = 'MTrk' + pack('>I', data['size'])
+        for event in data['metaevents']:
+            binary += dtime2binary(event['dtime'])
+            binary += pack('cBB', '\xff', event['type'], event['len'])
+            t =  event['type']
+            if t == 0x2f:   #End of Track
+                pass
+            elif t == 0x51: #Tempo
+                binary += pack('>I', self.tempo)[1:]
+            elif t == 0x03: #Track Name
+                binary += self.name
+            elif t == 0x58: #Beat
+                binary += pack('4b', *self.beat)
         return binary
 
-    def __parse_normal_track(self):
+
+class NormalTrack(object):
+    """ノーマルトラック（マスタートラック以外）を扱うクラス"""
+    def __init__(self, fp):
+        # self.data
+        # self.lyrics
+        # self.anote_events の設定
+        self.parse(fp)
+
+    def __str__(self):
+        return pp_str(self.data)
+
+    def parse(self, fp):
+        """vsqファイルのノーマルトラック部分をパースする
+        fp:vsqファイルポインタ or FakeFileインスタンス
+        ※fpはノーマルトラックのところまでシークしておく必要がある
+        """
         #トラックチャンクヘッダの解析
-        if self._f.read(4) != "MTrk":
-            print "Normal Track not found."
-            return {}
-        track = {}
-        track['size'] = unpack('>i', self._f.read(4))[0]
-        track['metastring'] = ''
-        track['CCdata'] = []
+        data = {
+            "MTrk": unpack(">4s", fp.read(4))[0],
+            "size": unpack('>i', fp.read(4))[0],
+            "text": '',
+            "cc_data": []
+            }
+
         #MIDIイベントの解析
-        dtime = self.__get_dtime()
-        mevent = unpack('BBB', self._f.read(3))
-        while mevent[1] != 0x2f: 
-            #コントロールチェンジイベント
+        while True:
+            dtime = get_dtime(fp)
+            mevent = unpack('3B', fp.read(3))
+            if mevent[1] == 0x2f: 
+                data['eot'] = dtime2binary(dtime) + '\xff\x2f\x00'
+                break
+            #Control Changeイベント
             if mevent[0] == 0xb0:
-                track['CCdata'].append({'dtime':dtime, 'cc':mevent})
+                data['cc_data'].append({'dtime':dtime, 'cc':mevent})
             else:
-                #トラックネームイベント
+                #TrackNameイベント
                 if mevent[1] == 0x03: 
-                    track['name'] = self._f.read(mevent[2])
-                #テキストイベント
+                    data['name'] = fp.read(mevent[2])
+                #Textイベント
                 elif mevent[1] == 0x01:
-                    self._f.read(8) #skip "DM:xxxx:"
-                    track['metastring'] += self._f.read(mevent[2]-8)
-            dtime = self.__get_dtime()
-            mevent = unpack('BBB', self._f.read(3))
-        #End of Trackイベント
-        track['eot'] = self.__dtime2binary(dtime) + '\xff\x2f\x00'
-        current_tag = ''
-        track['Common'] = {}
-        track['Master'] = {}
-        track['Mixer'] = {}
-        track['EventList'] = []
-        track['Events'] = {}
-        track['Details'] = {}
+                    fp.read(8) #skip "DM:xxxx:"
+                    data['text'] += fp.read(mevent[2]-8)
+
+        data.update(self.__parse_text(data['text']))
+        anote_events = self.__create_anote_events(data)
+        lyrics = [anote['lyrics'] for anote in anote_events]
+
+        self.lyrics = unicode(''.join(lyrics), 'shift-jis')
+        self.data = data
+        self.anote_events = anote_events
+
+    def unparse(self):
+        """ノーマルトラックをアンパースする
+        戻り値:ノーマルトラックバイナリ
+        """
+        #トラックチャンクヘッダ
+        data = self.data
+        binary = pack(
+            '>4sI4B',
+            data['MTrk'],
+            data['size'],
+            0x00, 0xff, 0x03, len(data['name']))
+        binary += data['name']
+
+        #convert text to textevents
+        text = self.__unparse_text()
+        step = 119
+        for i in range(0,len(text)-1,step):
+            frame = min(step, len(text)-i)
+            binary += pack("4B", 0x00, 0xff, 0x01, frame+8)
+            binary += "DM:%04d:" % (i/step) + text[i:i+frame]
+            
+        #Control Change event
+        for b in data['cc_data']:
+            binary += dtime2binary(b['dtime'])
+            binary += pack('3B', *b['cc'])
+
+        #End of Track
+        binary += data['eot']  
+        return binary
+
+    def __parse_text(self, text):
+        data = {
+            "Common": {},
+            "Master": {},
+            "Mixer": {},
+            "EventList": [],    # [時間] = ID#xxxxのリスト
+            "Events": {},       # ID#xxxxタグ
+            "Details": {}}      # h#xxxxタグ
+
         #テキスト情報の解析
-        for line in track['metastring'].split('\n'):
-            if line == '': break
+        current_tag = ''
+        for line in text.split('\n')[:-1]:
+            #操作タグの変更時
             if re.compile('\[.+\]').match(line):
                 current_tag = line[1:-1]
             else:
-                #Common,Master,Mixer情報
+                #Common,Master,Mixerタグ
                 if re.compile('Common|Master|Mixer').match(current_tag):
                     key, value = line.split('=')
-                    track[current_tag][key] = value
-                #イベントリスト
+                    data[current_tag][key] = value
+                #EventListタグ
                 elif current_tag == "EventList":
                     time, eventid  = line.split('=')
                     event = {'time': time, 'id': eventid}
-                    track['EventList'].append(event)
-                #各パラメータカーブのリスト
+                    data['EventList'].append(event)
+                #各パラメータカーブタグ
                 elif re.compile('.+BPList').match(current_tag):
-                    if not track.get(current_tag):
-                        track[current_tag] = []
+                    if not data.get(current_tag):
+                        data[current_tag] = []
                     key, value = line.split('=')
-                    track[current_tag].append({'time': int(key),
+                    data[current_tag].append({'time': int(key),
                                                'value': int(value)})
-                #イベントの詳細
+                #ID#xxxxタグ
                 elif re.compile('ID#[0-9]{4}').match(current_tag):
-                    if not track['Events'].get(current_tag):
-                        track['Events'][current_tag] = {}
+                    if not data['Events'].get(current_tag):
+                        data['Events'][current_tag] = {}
                     key, value = line.split('=')
-                    track['Events'][current_tag][key] = value
-                #各種詳細(歌詞情報等もここに含まれる)
+                    data['Events'][current_tag][key] = value
+                #h#xxxxタグ
                 elif re.compile('h#[0-9]{4}').match(current_tag):
-                    if not track['Details'].get(current_tag):
-                        track['Details'][current_tag] = {}
+                    if not data['Details'].get(current_tag):
+                        data['Details'][current_tag] = {}
                     lines = len(line.split(','))
                     if lines == 1:
                         key, value = line.split('=')
-                        track['Details'][current_tag][key] = value
+                        data['Details'][current_tag][key] = value
                     #歌詞情報
                     else:
                         l0 = line.split('=')[1].split(',')
                         d = {}
                         #2パターンあった
                         if len(l0) == 5:
-                            d = {'lyrics': l0[0][1:-1],
-                                 'phonetic': l0[1][1:-1],
-                                 'unknown1': l0[2],
-                                 'unknown2': l0[3],
-                                 'protect': l0[4]}
+                            d = {
+                                'lyrics': l0[0][1:-1],
+                                'phonetic': l0[1][1:-1],
+                                'unknown1': l0[2],
+                                'unknown2': l0[3],
+                                'protect': l0[4]}
                         else:
-                            d = {'lyrics': l0[0][1:-1],
-                                 'phonetic': l0[1][1:-1],
-                                 'unknown1': l0[2],
-                                 'unknown2': l0[3],
-                                 'unknown3': l0[4],
-                                 'protect': l0[5]}
-                        track['Details'][current_tag] = d
-        #音符イベントをまとめたリストを生成する 
-        track['AnoteEvents'] = self.__create_anote_events(track)
-        last_anote = track['AnoteEvents'][-1]
-        self.master_track['endTime'] = (last_anote['end_time']+
-                                        self.header['time_div']*4)
-        lyrics = [anote['lyrics'] for anote in track['AnoteEvents']]
-        track['lyrics'] = unicode(''.join(lyrics), 'shift-jis')
-        return track
+                            d = {
+                                'lyrics': l0[0][1:-1],
+                                'phonetic': l0[1][1:-1],
+                                'unknown1': l0[2],
+                                'unknown2': l0[3],
+                                'unknown3': l0[4],
+                                'protect': l0[5]}
+                        data['Details'][current_tag] = d
+        return data
 
-    def __unparse_normal_track(self, track): 
-        #トラックチャンクヘッダ
-        binary = 'MTrk' + pack('>I', track['size'])
-        binary += pack('BBBB',
-                        0x00,
-                        0xff,
-                        0x03,
-                        len(track['name']))
-        binary += track['name']
+    def __unparse_text(self):
         #テキスト情報
-        metastring = ''
+        data = self.data
+        text = ''
+        #Common,Master,Mixer
         for tag in ['Common','Master','Mixer']:
-            metastring += '[%s]\n' % tag
-            for item in track[tag].items():
-                metastring += "%s=%s\n" % item
-        metastring += '[EventList]\n'
-        for event in track['EventList']:
-            metastring += "%(time)s=%(id)s\n" % event
-        for key, value in track['Events'].items():
-            metastring += '[%s]\n' % key
+            text += '[%s]\n' % tag
+            for item in data[tag].items():
+                text += "%s=%s\n" % item
+        #EventList        
+        text += '[EventList]\n'
+        for event in data['EventList']:
+            text += "%(time)s=%(id)s\n" % event
+        #Events
+        for key, value in data['Events'].items():
+            text += '[%s]\n' % key
             for item in value.items():
-                metastring += "%s=%s\n" % item
-        for key, value in track['Details'].items():
-            metastring += '[%s]\n' % key
+                text += "%s=%s\n" % item
+        #Details
+        for key, value in data['Details'].items():
+            text += '[%s]\n' % key
             if value.keys().count('lyrics') == 0:
                 for item in value.items():
-                    metastring += "%s=%s\n" % item
+                    text += "%s=%s\n" % item
             elif value.keys().count('unknown3') == 0:
-                metastring += '''L0=\"%(lyrics)s\",\
-                                 \"%(phonetic)s\",\
-                                 %(unknown1)s,\
-                                 %(unknown2)s,\
-                                 %(protect)s\n''' % value
+                text += '''L0=\"%(lyrics)s\",\"%(phonetic)s\",%(unknown1)s,%(unknown2)s,%(protect)s\n''' % value
             else:
-                metastring += '''L0=\"%(lyrics)s\",\
-                                 \"%(phonetic)s\",\
-                                 %(unknown1)s,\
-                                 %(unknown2)s,\
-                                 %(unknown3)s,\
-                                 %(protect)s\n''' % value
+                text += '''L0=\"%(lyrics)s\",\"%(phonetic)s\",%(unknown1)s,%(unknown2)s,%(unknown3)s,%(protect)s\n''' % value
+        #any BPList                         
         bprxp = re.compile('.+BPList')
-        bptags = [tag for tag in track.keys() if bprxp.match(tag)]
+        bptags = [tag for tag in data.keys() if bprxp.match(tag)]
         for tag in bptags:
-            metastring += "[%s]" % tag + '\n'
-            for item in track[tag]:
-                metastring += "%(time)d=%(value)d" % item + '\n'
-        #テキスト情報からSMFに変換する処理
-        s=0
-        e=119
-        mslist = []
-        while e < len(metastring):
-            mslist.append(metastring[s:e])
-            s+=119
-            e+=119
-        mslist.append(metastring[s:])
-        dmcount = 0
-        for tevent in mslist:
-            binary += pack('BBBB',
-                            0x00,
-                            0xff,
-                            0x01,
-                            len(tevent)+8)
-            binary += 'DM:%04d:' % dmcount + tevent
-            dmcount += 1
-        for b in track['CCdata']:
-            binary += self.__dtime2binary(b['dtime'])
-            binary += pack('BBB', b['cc'][0], b['cc'][1], b['cc'][2])
-        #End of Track
-        binary += track['eot']  
-        return binary
+            text += "[%s]\n" % tag 
+            for item in data[tag]:
+                text += "%(time)d=%(value)d\n" % item
 
-    def __create_anote_events(self, track):
+        return text
+    
+    def __create_anote_events(self, data):
         """[ID,歌詞,発音,音高,開始時間,終了時間]
             でまとめられた音符イベントのリストが生成される
             ルール適用部分の参考素材になりそうな予定
         """
-        anoteEvents = []
-        for event in track['EventList']:
-            if event['id'] == 'EOS':
-                break
-            if track['Events'][event['id']]['Type'] == 'Anote': 
-                e = track['Events'][event['id']] 
-                d = track['Details'][e['LyricHandle']]
-                es ={'id': event['id'],
-                     'start_time': int(event['time']),
-                     'lyrics': d['lyrics'],
-                     'phonetic': d['phonetic'],
-                     'note': int(e['Note#']),
-                     'end_time': int(event['time'])+int(e['Length'])}
-                anoteEvents.append(es)
-        return anoteEvents
+        anote_events = []
+        for event in data['EventList'][:-1]:
+            if data['Events'][event['id']]['Type'] == 'Anote': 
+                e = data['Events'][event['id']] 
+                d = data['Details'][e['LyricHandle']]
+                es ={
+                    'id': event['id'],
+                    'start_time': int(event['time']),
+                    'lyrics': d['lyrics'],
+                    'phonetic': d['phonetic'],
+                    'note': int(e['Note#']),
+                    'end_time': int(event['time'])+int(e['Length'])}
+                anote_events.append(es)
+        return anote_events
 
-    def __set_param_curve(self, ptype, curve, s, e, stretch):
-        if not curve: return False
-        start_time = self.master_track['startTime']
-        end_time = self.master_track['endTime']
-        if s is None or s <= start_time: s = start_time + 1     
-        if e is None or e >= end_time: e = end_time + 1     
-        length = e - s
-        if length < 0:
-            return False
-        len_ratio = float(length)/len(curve)
-        new_bp = []
-        for i, v in enumerate(curve):
-            if int(len_ratio*i) != int(len_ratio*(i-1)) or i == 0:
-                new_bp.append({'time': s+int(len_ratio*i), 'value':v})
-        param = self.current_track[ptype]
-        select = self.__get_param_curve
-        end_cands = select(ptype,start_time,s) + select(ptype,s,e)
-        endvalue = end_cands[-1]['value']
-        new_bp.append({'time':e+1, 'value':endvalue})
-        for p in select(ptype,s,e): param.remove(p)
-        param.extend(new_bp)
-        param.sort()
-        return True
 
-    def __get_param_curve(self, ptype, s, e):
-        if s==None: s = self.master_track['startTime']
-        if e==None: e = self.master_track['endTime']
-        return [ev for ev in self.current_track[ptype]
-                       if s <= ev['time'] <= e]
+class VSQEditor(object):
+
+    def __init__(self, filename=None, binary=None):
+        if filename: self.parse(filename=filename)
+        elif binary: self.parse(binary=binary)
+        
 
     def parse(self, filename=None, binary=None):
-        """VSQファイルをパースする。引数はfilename,binaryのどちらかを指定
+        """VSQファイルをパースする
         filename:VSQファイルのパス
         binary:VSQファイルのバイナリデータ
+        引数はfilename,binaryのどちらかを指定
         """
-        if filename: self._f = open(filename, 'r')
-        else: self._f = FakeFile(binary)
-        self.header = self.__parse_header()
-        self.master_track = self.__parse_master_track()
-        self.normal_tracks = []
-        for i in range(self.header['track_num']-1):
-            track = self.__parse_normal_track()
-            self.normal_tracks.append(track)       
+
+        #各チャンクのパース
+        self._fp = open(filename, 'r') if filename else FakeFile(binary)
+        self.header = Header(self._fp)
+        self.track_num = self.header.data['track_num']-1
+        self.master_track = MasterTrack(self._fp)
+        self.normal_tracks = [NormalTrack(self._fp) for i in range(self.track_num)]
+            
+        #トラックの先端時間（プリメジャータイムを除いた時間）を求める
+        pre_measure = int(self.normal_tracks[0].data['Master']['PreMeasure'])
+        nn, dd, _, _ = self.master_track.beat
+        time_div = self.header.data['time_div']
+        self.start_time = int(nn/float(2**dd)*4*pre_measure*time_div)
+
+        #トラックの終端時間（最後のノートイベントの終端時間）を求める
+        self.end_time = self.start_time
+        for track in self.normal_tracks:
+            et = track.anote_events[-1]['end_time']
+            self.end_time = max(et, self.end_time)
+
+        # self.current_track を 0 番目に設定
         self.select_track(0)
         
     def unparse(self, filename=None):
-        """現在のオブジェクトのデータをアンパースして、VSQファイルとして書きこむ。
+        """現在のオブジェクトのデータをアンパースして、
+        VSQファイルとして書きこむ
+        filename:書き込むVSQファイルのパス
+        戻り値:filenameが指定されなかった場合にはバイナリを返す
         """
-        binary = self.__unparse_header()
-        binary += self.__unparse_master_track()
+        #各チャンクのアンパース
+        binary = self.header.unparse()
+        binary += self.master_track.unparse()
         for track in self.normal_tracks:
-            binary += self.__unparse_normal_track(track)
-        if filename: 
-            self._of = open(filename, 'w')
-            self._of.write(binary)
+            binary += track.unparse()
+        
+        #オプションに従って出力
+        if filename:
+            open(filename, 'w').write(binary)
         else:
             return binary
     
     def get_lyrics(self):
-        """歌詞の文字列を取得する
+        """歌詞を取得する
         戻り値:歌詞(string)
         """
-        return self.current_track['lyrics']
+        return self.current_track.lyrics
 
     def get_anotes(self, s=None, e=None):
-        """sからeまでの音符情報を取得する。
+        """sからeまでの音符情報を取得する
         s:選択開始地点の時間
         e:選択終了地点の時間
-        sやeを指定しなければ、トラックの先頭と末尾の時間に置き換えられる。
+        sやeを指定しなければ、トラックの先頭と末尾の時間に置き換えられる
         戻り値:AnoteEventのリスト
         AnoteEvent:
-            音符イベントの主な情報をまとめたディクショナリ。構造は以下
+            音符イベントの主な情報をまとめたディクショナリ
+            構造は以下
             {
             "id":イベントID,
             "lyrics":歌詞,
@@ -422,10 +442,13 @@ class VSQEditor(object):
             "note":音高（MIDIの規格に基づく）
             }
         """
-        if s==None: s = self.master_track['startTime']
-        if e==None: e = self.master_track['endTime']
-        return [ev for ev in self.current_track['AnoteEvents']
-                       if s <= ev['end_time'] and ev['start_time'] <= e]
+        if s == None:
+            s = self.start_time
+        if e == None:
+            e = self.end_time
+        anotes = self.current_track.anote_events
+        return [ev for ev in anotes
+                if s <= ev['end_time'] and ev['start_time'] <= e]
 
     def get_anotes_f_lyric_i(self, s=None, e = None):
         lyrics = self.get_lyrics()
@@ -435,32 +458,32 @@ class VSQEditor(object):
 
         s_index = s - len(smallrxp.findall(lyrics[:s]))
         e_index = e - len(smallrxp.findall(lyrics[:e]))
-        return self.current_track['AnoteEvents'][s_index:e_index]
+        return self.current_track.anote_events[s_index:e_index]
     
     def get_pitch_curve(self, s=None, e=None):
-        """sからeまでのピッチ曲線を取得する。
+        """sからeまでのピッチ曲線を取得する
         s:選択開始地点の絶対時間
         e:選択終了地点の絶対時間
-        sやeを指定しなければ、トラックの先頭と末尾の時間に置き換えられる。
+        sやeを指定しなければ、トラックの先頭と末尾の時間に置き換えられる
         """
         return self.__get_param_curve('PitchBendBPList', s, e)
 
     def get_dynamics_curve(self, s=None, e=None):
-        """sからeまでのダイナミクス曲線を取得する。
+        """sからeまでのダイナミクス曲線を取得する
         s:選択開始地点の絶対時間
         e:選択終了地点の絶対時間
         戻り値:曲線における
-        sやeを指定しなければ、トラックの先頭と末尾の時間に置き換えられる。
+        sやeを指定しなければ、トラックの先頭と末尾の時間に置き換えられる
         """
         return self.__get_param_curve('DynamicsBPList', s, e)
 
     def set_pitch_curve(self, curve, s=None, e=None, stretch=None):
-        """sからeまでのピッチ曲線をcurveで置き換える。
+        """sからeまでのピッチ曲線をcurveで置き換える
+        curve:曲線を表すリスト
         s:選択開始地点の絶対時間
         e:選択終了地点の絶対時間
         stretch:曲線の伸縮オプション（未実装）
-        
-        sやeを指定しなければ、トラックの先頭と末尾の時間に置き換えられる。
+        sやeを指定しなければ、トラックの先頭と末尾の時間に置き換えられる
         """
         return self.__set_param_curve('PitchBendBPList',
                                         curve,
@@ -469,7 +492,13 @@ class VSQEditor(object):
                                         stretch)
         
     def set_dynamics_curve(self, curve, s=None, e=None, stretch=None):
-        """sからeまでのダイナミクス曲線をcurveで置き換える。"""
+        """sからeまでのダイナミクス曲線をcurveで置き換える
+        curve:曲線を表すリスト
+        s:選択開始地点の絶対時間
+        e:選択終了地点の絶対時間
+        stretch:曲線の伸縮オプション（未実装）
+        sやeを指定しなければ、トラックの先頭と末尾の時間に置き換えられる
+        """
         return self.__set_param_curve('DynamicsBPList',
                                         curve,
                                         s,
@@ -477,23 +506,81 @@ class VSQEditor(object):
                                         stretch)
 
     def set_anote_length(self, anotes, length):
-        """音符の長さ"""
+        """音符の長さを変更する
+        anotes:変更対象となる音符イベント（リスト）
+        length:変更後の音符の長さ
+        """
         events = self.current_track['Events']
         for anote in anotes:
             events[anote['id']]['length'] = length
             anote['end_time'] = anote['start_time'] + length
+    
+
+    def insert_note(self, note, index):
+        """指定したインデックスの箇所に音符を挿入する
+        === Args
+        note: 挿入する音符イベント↑
+        index: EventListのインデックス、おそらく歌詞の挿入としてはこっちのほうが自然
+        === Returns
+        0: 成功
+        1: 失敗
+        """
+        def invalid_arguments(note, index):
+            """引数のチェック"""
+            i = False if 0 <= index <= len(self.current_track.data["EventList"]) else True
+            j = False if note['lyric'] and note['event'] else True
+            k = False if note else True
+            return i and j and k
+
+        def inc(handle_number_string):
+            return "h#%04d" % (int(handle_number_string[2:]) + 1)
+
+        if invalid_arguments(note, index):
+            return 1
         
-    def select_track(self, track_num):
-        """操作対象トラックを変更する。"""
-        if track_num < self.header['track_num']:
-            self.current_track = self.normal_tracks[track_num]
-            return True
-        else:
-            return False
+        # あとでIDとかhを振り直せば楽じゃねっておもった
+        event_list = [e['time'] for e in self.current_track.data['EventList']]
+        handle_detail = [e[1] for e in sorted(self.current_track.data['Details'].items())]
+        events_detail = [e[1] for e in sorted(self.current_track.data['Events'].items())]
+
+        note['event']['LyricHandle'] = events_detail[index]['LyricHandle']
+        handle_index = int(events_detail[index]['LyricHandle'][2:])
+        for i in range(index, len(events_detail), 1):
+            if 'LyricHandle' in events_detail[i]:
+                events_detail[i]['LyricHandle'] = inc(events_detail[i]['LyricHandle'])
+            if 'VibratoHandle' in events_detail[i]:
+                events_detail[i]['VibratoHandle'] = inc(events_detail[i]['VibratoHandle'])
+        # ♂
+        events_detail.insert(index, note['event'])
+        handle_detail.insert(handle_index, note['lyric'])
+        event_list.insert(index, event_list[index])
+
+        # 追加するノートの長さ分、EventListの時間をずらす
+        for i in range(index+1, len(event_list), 1):
+            event_list[i] = int(event_list[i]) + int(note['event']['Length'])
+
+        # 値の更新
+        self.end_time += int(note['event']['Length'])
+        self.current_track.data['EventList'] = (
+            [{'id': 'ID#%04d' % (i), 'time': e} for i, e in enumerate(event_list)]
+            )
+        for i, h in enumerate(handle_detail):
+            self.current_track.data['Details'].update({'h#%04d' % (i): h})
+        for i, e in enumerate(events_detail):
+            self.current_track.data['Events'].update({'ID#%04d' % (i): e})
+        return 0
+        
+    
+    def select_track(self, n):
+        """操作対象トラックを変更する
+        n: トラック番号
+        """
+        if n < self.track_num:
+            self.current_track = self.normal_tracks[n]
 
     def apply_rule(self, rule_i):
         """ルールを適用する
-        rule_i: get_rule_candsメソッドによって得られたルールインスタンス
+        rule_i: get_rule_candsメソッドによって得られたルール適用候補
         """
         anotes = self.get_anotes_f_lyric_i(rule_i['s_index'],
                                       rule_i['e_index'])
@@ -510,12 +597,11 @@ class VSQEditor(object):
 
     def unapply_rule(self, rule_i):
         """ルールの適用をもとに戻す
-        rule_i: get_rule_candsメソッドによって得られたルールインスタンス
+        rule_i: get_rule_candsメソッドによって得られたルール適用候補
         """
-        anotes = self.get_anotes_f_lyric_i(rule_i['s_index'],
-                                        rule_i['e_index'])
+        anotes = self.get_anotes_f_lyric_i(rule_i['s_index'],rule_i['e_index'])
         start_time = anotes[0]['start_time']
-        end_time = anotes[len(anotes)-1]['end_time']
+        end_time = anotes[-1]['end_time']
         self.set_dynamics_curve(rule_i['undyn'], 
                                 start_time,
                                 end_time)
@@ -526,11 +612,13 @@ class VSQEditor(object):
 
     def get_rule_cands(self, rule):
         """ルール適用候補を取得する
-        rule:ディクショナリとして格納されたルール定義。vsq_rules.pyを参照
-        戻り値:ルール適用候補（リスト）
+        rule:ディクショナリとして格納されたルール定義（vsq_rules.pyを参照）
+        戻り値:ルール適用候補（ディクショナリ）
+        ルール適用候補のキーには重複しないIDが振られている
         """
         rulerxp = re.compile(rule['regexp'])
         rule_dic = {}
+
         def is_connected(anotes):
             if len(anotes) <= 1: return True 
             for i, anote in enumerate(anotes[1:]):
@@ -539,69 +627,107 @@ class VSQEditor(object):
             return True
 
         def check_notes(notes, anotes):
-            if notes is None: return True
+            if notes is None:
+                return True
             relative_notes = [0] + [anote['note'] - anotes[i]['note'] 
                                     for i, anote in enumerate(anotes[1:])]
             return relative_notes == notes
 
         match_len = lambda x, y: (not x or not y) or len(x)==len(y)
-
         lyrics = self.get_lyrics()
         for i, match in enumerate(rulerxp.finditer(lyrics)):
             s = match.start()
             e = match.end()
             match_anotes = self.get_anotes_f_lyric_i(s,e)
+            #各ノートが接続されているか
             if rule['connect'] and not is_connected(match_anotes):
                 continue
+            #ノートの数と各ノートに割り当てられるカーブの数が一致するか
             if (not match_len(rule['dyn_curves'], match_anotes) or
                 not match_len(rule['pit_curves'], match_anotes)):
                 continue
+            #音階の変化が一致するか
             if (rule['relative_notes'] and 
                 not check_notes(rule['relative_notes'],match_anotes)):
                 continue
             else:
                 u_dyn_curve = self.get_dynamics_curve(
                         match_anotes[0]['start_time'],
-                        match_anotes[len(match_anotes)-1]['end_time'])
-                u_pit_curve = self.get_dynamics_curve(
+                        match_anotes[-1]['end_time'])
+                u_pit_curve = self.get_pitch_curve(
                         match_anotes[0]['start_time'],
-                        match_anotes[len(match_anotes)-1]['end_time'])
-                rule_i = {"instance_ID":"I"+str(i),
+                        match_anotes[-1]['end_time'])
+                rule_i = {"instance_id":"I"+str(i),
                         "rule":rule,
                         "s_index":s,
                         "e_index":e,
                         "undyn":u_dyn_curve,
                         "unpit":u_pit_curve}
-                rule_dic[rule['rule_ID']+rule_i['instance_ID']] = rule_i
+                rule_dic[rule['rule_id']+rule_i['instance_id']] = rule_i
+
         return rule_dic
 
+    def __set_param_curve(self, ptype, curve, s, e, stretch):
+        if s == None or s <= self.start_time:
+            s = self.start_time + 1     
+        if e == None or self.end_time <= e:
+            e = self.end_time + 1     
+        length = e - s
+        if length < 0 or curve == None:
+            return False
+        len_ratio = float(length)/len(curve)
+
+        #curveをスケールしながらパラメータを生成
+        new_bp = []
+        for i, v in enumerate(curve):
+            if int(len_ratio*i) != int(len_ratio*(i-1)) or i == 0:
+                new_bp.append({'time': s+int(len_ratio*i), 'value':v})
+        select = self.__get_param_curve
+
+        #元の波形の終端の値を新しい波形の終端に追加
+        #選択範囲以外への影響を抑制する
+        end_value = select(ptype, self.start_time, e)[-1]['value']
+        new_bp.append({'time':e+1, 'value':end_value})
+
+        param = self.current_track.data[ptype]
+        for p in select(ptype, s, e):
+            param.remove(p)  #選択範囲の元の波形の除去
+        param.extend(new_bp)  #新しい波形の追加
+        param.sort()
+        return True
+
+    def __get_param_curve(self, ptype, s, e):
+        if s == None:
+            s = self.start_time
+        if e == None:
+            e = self.end_time
+        return [ev for ev in self.current_track.data[ptype] if s <= ev['time'] <= e]
     
 
 '''
 テストコード:
 1.test.vsqを読み込んで、時間6800~7100に存在する音符イベント、
-ダイナミクス、ピッチベンドのカーブを表示する。
+ダイナミクス、ピッチベンドのカーブを表示する
 2.指定した時間の時間のダイナミクス、ピッチベンドのカーブを
-任意のものに変更する。
-3.パース結果をアンパースし、outtest.vsqとして出力する。
-4.歌詞を表示する。
-5.音程の相対値を表示する。
+任意のものに変更する
+3.パース結果をアンパースし、outtest.vsqとして出力する
+4.歌詞を表示する
+5.音程の相対値を表示する
 '''
 if __name__ == '__main__':
-    editor = VSQEditor(string=open('test.vsq', 'r').read())
-    enable = [6]
-    
+    editor = VSQEditor(binary=open('out.vsq', 'r').read())
+    enable = [7]
+
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable: 
         print "anotes:"
         anotes = editor.get_anotes(6800,7100)
-        print pp(anotes)
+        pp(anotes)
         
         print "\ndynamics:"
-        print pp(editor.get_dynamics_curve(6800,7100))
+        pp(editor.get_dynamics_curve(6800,7100))
         print "\npitchbend:"
-        print pp(editor.get_pitch_curve(6800,7100))
-        print pp([[p['time'], p['value']] for p in editor.get_dynamics_curve()])
+        pp(editor.get_pitch_curve(6800,7100))
     
     #2.範囲を選択してカーブを編集
     if 2 in enable:
@@ -612,14 +738,12 @@ if __name__ == '__main__':
         
     #4.歌詞を表示
     if 4 in enable:
-        print("\nlyrics:")
-        anotes = editor.get_anotes()
-        lyrics = [anote['lyrics'] for anote in anotes]
-        print unicode(''.join(lyrics),'shift-jis')
+        print "\nlyrics:"
+        print editor.get_lyrics()
     
     #5.相対音階を表示（前のノートとの差をとる）
     if 5 in enable:
-        print("\nrelative_notes:")
+        print "\nrelative_notes:"
         anotes = editor.get_anotes()
         relative_notes = [0] + [anote['note'] - anotes[i]['note'] 
                                     for i, anote in enumerate(anotes[1:])]
@@ -628,10 +752,46 @@ if __name__ == '__main__':
     #6.ルール適用テスト
     if 6 in enable:
         rule_cands = editor.get_rule_cands(zuii_rule)
-        print rule_cands
         for rule_i in rule_cands.values():
             editor.apply_rule(rule_i)
 
     #3.編集結果をunparseして書きこむ
     if 3 in enable:
         editor.unparse('out.vsq')   
+
+    # ノート挿入テスト
+    if 7 in enable:
+        i = 10
+        note = {
+            'lyric': {
+                'lyrics': 'a',
+                'phonetic': 'a',
+                'protect': '0',
+                'unknown1': '0.000000',
+                'unknown2': '0'
+                },
+            'event': {
+                "PMBendDepth": "8",
+                "PMBendLength": "14",
+                "PMbPortamentoUse": "0",
+                "DEMdecGainRate": "50",
+                "Type": "Anote",
+                "Length": "120",
+                "DEMaccent": "50",
+                "Dynamics": "64"
+                }
+            }
+
+        print "----before insert----"
+        pp(editor.current_track.data['EventList'][i-3:i+3])
+        for i in range(i-3, i+3, 1):
+            s = "h#%04d" % i
+            pp(editor.current_track.data['Details'][s])
+
+        print "----after insert----"
+        editor.insert_note(note, i)
+        pp(editor.current_track.data['EventList'][i-3:i+3])
+        for i in range(i-3, i+3, 1):
+            s = "h#%04d" % i
+            pp(editor.current_track.data['Details'][s])
+
