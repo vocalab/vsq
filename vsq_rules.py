@@ -8,7 +8,7 @@
 　メソッドが思いつかないので…
 
 以下ディクショナリの要素について
-rule_ID:
+rule_id:
     ルールID,重複しないように注意する必要がある。
     DBを使うようになれば問題ないのだが。
 
@@ -64,11 +64,11 @@ dyn_curves = [linear(0,100),
               curve(range(30,0,-1)+range(0,100)),
               linear(100,0)]
 
-san_rule = {"rule_ID":"R0",
+san_rule = {"rule_id":"R0",
         "name":"さんの前のdynを下げる",
         "regexp":u".さn",
         "connect":True,
-        "relative_notes":[0,-2,0],
+        "relative_notes":None,
         "dyn_curves":dyn_curves,
         "pit_curves":[]}
 
@@ -76,12 +76,22 @@ zuii_dyn_curves = [lowpass(0,100,0.8)]
 zuii_pit_curves = [lowpass(-10000,0,0.8)]
 
 
-zuii_rule = {"rule_ID":"R1",
-        "name":"ずぃの最後お下げる",
+zuii_rule = {"rule_id":"R1",
+        "name":"ずぃの最後を下げる",
         "connect":False,
         "regexp":u"ずぃ",
         "relative_notes":None,
         "dyn_curves":zuii_dyn_curves,
         "pit_curves":zuii_pit_curves}
+
+class Rule(object):
+    def __init__(self):
+        pass
+
+    def apply(self, editor):
+        pass
+
+
+
 
 
