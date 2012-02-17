@@ -46,16 +46,16 @@ $(document).ready(function(){
             }
         },
         series:[{
-			data: []
-		}]
+            data: []
+        }]
     });
-	var pitChart = new Highcharts.Chart({
+    var pitChart = new Highcharts.Chart({
         chart: {
             renderTo: 'pitchart',
             defaultSeriesType: 'area',
             zoomType: 'x',
         },
-		colors: ['#AA4643'],
+        colors: ['#AA4643'],
         title: {
             text: "pitch curve"
         },
@@ -98,7 +98,7 @@ $(document).ready(function(){
         },
         series:[{
             data: []
-		}]
+        }]
     });
 
 
@@ -123,9 +123,9 @@ $(document).ready(function(){
     var changeGraph = function(){
         var options = {
             success: function(response){
-				dataset = $.evalJSON(response);
+                dataset = $.evalJSON(response);
                 dynChart.series[0].setData(dataset.dyn);
-				pitChart.series[0].setData(dataset.pit);
+                pitChart.series[0].setData(dataset.pit);
             },
         url: "/appliedvsq"
         };
@@ -148,5 +148,7 @@ $(document).ready(function(){
         }
     clickedCandidate.change();
     });
+    $("#dynchart").css("width", vsq_length / 10);
+    $("#pitchart").css("width", vsq_length / 10);
     changeGraph();
 });

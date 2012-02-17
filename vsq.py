@@ -651,12 +651,14 @@ class VSQEditor(object):
                 not check_notes(rule['relative_notes'],match_anotes)):
                 continue
             else:
-                u_dyn_curve = self.get_dynamics_curve(
+                u_dyn = self.get_dynamics_curve(
                         match_anotes[0]['start_time'],
                         match_anotes[-1]['end_time'])
-                u_pit_curve = self.get_pitch_curve(
+                u_pit = self.get_pitch_curve(
                         match_anotes[0]['start_time'],
                         match_anotes[-1]['end_time'])
+                u_dyn_curve = [v['value'] for v in u_dyn]
+                u_pit_curve = [v['value'] for v in u_pit]
                 rule_i = {"instance_id":"I"+str(i),
                         "rule":rule,
                         "s_index":s,
@@ -673,7 +675,7 @@ class VSQEditor(object):
         if e == None or self.end_time <= e:
             e = self.end_time + 1     
         length = e - s
-        if length < 0 or curve == None:
+        if length < 0 or not curve:
             return False
         len_ratio = float(length)/len(curve)
 

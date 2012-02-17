@@ -42,25 +42,31 @@ class ParserPage(webapp.RequestHandler):
             output_lyric += lyrics[before_index:].encode('utf-8') if (before_index != len(lyrics)) else ""
             output_rules.append({"lyric":output_lyric, "keys":candidate_keys, "name":r["name"]})
 
-        memcache.set_multi({ "data": data,
+        memcache.set_multi({ "editor": editor,
             "name": file_name },
             key_prefix="vsq_", time=3600)
         template_values = {
-                'rules': output_rules
+                'rules': output_rules,
+                'vsq_length': editor.end_time
                 }
         path = os.path.join(os.path.dirname(__file__), 'parse.html')
         self.response.out.write(template.render(path, template_values))
 
 class AppliedVsqJSON(webapp.RequestHandler):
     def post(self):
-        data = memcache.get("vsq_data")
-        editor = VSQEditor(binary = data)
+        editor = memcache.get("vsq_editor")
+        file_name = memcache.get("vsq_name")
         candidates = editor.get_rule_cands(zuii_rule)
         candidates.update(editor.get_rule_cands(san_rule))
-        keys = self.request.get_all("rule")
+        select_keys = self.request.get_all("rule")
 
-        for key in keys:
-            editor.apply_rule(candidates[key])
+        for key, value in candidates.items():
+            if key in select_keys:
+                editor.apply_rule(value)
+            else:
+                editor.unapply_rule(value)
+        memcache.replace_multi({ "editor": editor,
+            "name": file_name }, time=3600, key_prefix="vsq_")
         dyn_list = [[p['time'],p['value']] for p in editor.get_dynamics_curve()]
         pit_list = [[p['time'],p['value']] for p in editor.get_pitch_curve()]
         self.response.content_type = "application/json"
@@ -68,18 +74,16 @@ class AppliedVsqJSON(webapp.RequestHandler):
 
 class DownloadPage(webapp.RequestHandler):
     def post(self):
-        data = memcache.get("vsq_data")
+        editor = memcache.get("vsq_editor")
         file_name = memcache.get("vsq_name")
-        editor = VSQEditor(binary = data)
-        candidates = editor.get_rule_cands(zuii_rule)
-        candidates.update(editor.get_rule_cands(san_rule))
-        keys = self.request.get_all("rule")
-
-        for key in keys:
-            editor.apply_rule(candidates[key])
-        self.response.headers['Content-Type'] = "application/x-vsq; charset=Shift_JIS"
-        self.response.headers['Content-disposition'] = "filename=" + file_name.encode("utf-8")
-        self.response.out.write(editor.unparse())
+        if editor is None or file_name is None:
+            print 'Content-Type: text/plain'
+            print ''
+            print '<p>セッション切れです。<a href="/">トップ</a>へ戻ってもう一度作業してください。</p>'
+        else:
+            self.response.headers['Content-Type'] = "application/x-vsq; charset=Shift_JIS"
+            self.response.headers['Content-disposition'] = "filename=" + file_name.encode("utf-8")
+            self.response.out.write(editor.unparse())
 
 application = webapp.WSGIApplication(
                                         [('/', MainPage),
