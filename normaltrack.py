@@ -6,11 +6,11 @@ from struct import *
 
 class Singer(object):
     def __init__(self, time, params):
-        self.time = time
+        self.start = time
         self.params = params
 
     def get_event(self):
-        return {'Type': 'Singer', 'time': str(self.time)}
+        return {'Type': 'Singer', 'time': str(self.start)}
 
     def get_singer_event(self):
         return self.params
@@ -24,30 +24,56 @@ class Anote(object):
             'PMbPortamentoUse': 0,
             'DEMdecGainRate': 50,
             'DEMaccent': 50}
+    _lyric = ''
+    _phonetic = ''
+    _length = 0
+    _end = 0
     def __init__(self, time, note, lyric=u"a", length=120,
             vibrato=None, options=d_options):
-        self.time = time
+        self.start = time
         self.note = note
         self.length = length
-        self.set_lyric(lyric)
+        self.lyric = lyric
         self.vibrato = vibrato
         self.options = options
 
-    #歌詞と発音記号を同期させたいので
     def set_lyric(self, lyric):
         self._lyric = lyric
         self._phonetic = tools.lyric2phonetic(lyric)
 
-    def get_lyric(self, opt='l'):
-        if opt == 'l':
-            return self._lyric
-        elif opt == 'p':
-            return self._phonetic
+    def get_lyric(self):
+        return self._lyric
+
+    def set_phonetic(self, phonetic):
+        self._phonetic = phonetic
+        self._lyric = tools.phonetic2lyric(phonetic)
+
+    def get_phonetic(self):
+        return self._phonetic
+
+    def set_length(self, length):
+        self._length = length
+        self._end = self.start + length
+
+    def get_length(self):
+        return self._length
+
+    def set_end(self, end):
+        self._end = end 
+        self._length = end - self._start
+
+    def get_end(self):
+        return self._end
+
+    lyric = property(get_lyric, set_lyric)
+    phonetic = property(get_phonetic, set_phonetic)
+    length = property(get_length, set_length)
+    end = property(get_end, set_end)
 
     def get_event(self):
         event = {
             'Type': 'Anote',
-            'time': str(self.time),
+            'time': str(self.start),
             'Length': str(self.length),
             'Note#': str(self.note)
             }
@@ -117,8 +143,8 @@ class NormalTrack(object):
         self.data = data
         self.anotes = anotes
         self.singers = singers
-        self.phonetics = ''.join([a.get_lyric('p') for a in self.anotes])
-        self.lyrics = ''.join([a.get_lyric() for a in self.anotes])
+        self.phonetics = ''.join([a.phonetic for a in self.anotes])
+        self.lyrics = ''.join([a.lyric for a in self.anotes])
 
     def unparse(self):
         """ノーマルトラックをアンパースする
@@ -278,14 +304,14 @@ class NormalTrack(object):
             elif t == 'Singer':
                 icon = details[e.pop('IconHandle')]
                 singers.append(Singer(time, icon))
-        anotes.sort(key=lambda x: x.time)
-        singers.sort(key=lambda x: x.time)
+        anotes.sort(key=lambda x: x.start)
+        singers.sort(key=lambda x: x.start)
         return anotes, singers
 
     def __unpack_events(self, anotes, singers):
         packed = anotes[:]
         packed.extend(singers)
-        packed.sort(key=lambda x:int(x.time))
+        packed.sort(key=lambda x:int(x.start))
 
         details = []
         events = []
@@ -299,7 +325,7 @@ class NormalTrack(object):
                     e.update({'VibratoHandle': 'h#%04d' % len(details)})
                     details.append(vibrato)
             elif e['Type'] == 'Singer':
-                e.update({'IconHandle': 'h#%04d' %len(details)})
+                e.update({'IconHandle': 'h#%04d' % len(details)})
                 details.append(p.get_singer_event())
             events.append(e)
         return events, details
