@@ -38,7 +38,7 @@ class VSQEditor(object):
         #トラックの終端時間（最後のノートイベントの終端時間）を求める
         self.end_time = self.start_time
         for track in self.normal_tracks:
-            et = track.anotes[-1].time + track.anotes[-1].length
+            et = track.anotes[-1].end
             self.end_time = max(et, self.end_time)
 
         # self.current_track を 0 番目に設定
@@ -91,7 +91,7 @@ class VSQEditor(object):
         if e is None:
             e = self.end_time
         anotes = self.current_track.anotes
-        return [a for a in anotes if s <= a.time + a.length and a.time <= e]
+        return [a for a in anotes if s <= a.end and a.start <= e]
 
     def get_anotes_f_lyric_i(self, s=None, e = None):
         lyrics = self.get_lyrics()
@@ -171,13 +171,13 @@ class VSQEditor(object):
                                       rule_i['e_index'])
         for i, curve in enumerate(rule_i['rule']['dyn_curves']):
             self.set_dynamics_curve(curve['curve'],
-                                anotes[i].time,
-                                anotes[i].time + anotes[i].length,
+                                anotes[i].start,
+                                anotes[i].end,
                                 curve['stretch'])
         for i, curve in enumerate(rule_i['rule']['pit_curves']):
             self.set_pitch_curve(curve['curve'],
-                                anotes[i].time,
-                                anotes[i].time + anotes[i].length,
+                                anotes[i].start,
+                                anotes[i].end,
                                 curve['stretch'])
 
     def unapply_rule(self, rule_i):
@@ -185,8 +185,8 @@ class VSQEditor(object):
         rule_i: get_rule_candsメソッドによって得られたルール適用候補
         """
         anotes = self.get_anotes_f_lyric_i(rule_i['s_index'],rule_i['e_index'])
-        start_time = anotes[0].time
-        end_time = anotes[-1].time + anotes[-1].length
+        start_time = anotes[0].start
+        end_time = anotes[-1].end
         self.set_dynamics_curve(rule_i['undyn'], 
                                 start_time,
                                 end_time)
@@ -207,7 +207,7 @@ class VSQEditor(object):
         def is_connected(anotes):
             if len(anotes) <= 1: return True 
             for i, a in enumerate(anotes[1:]):
-                if a.time - (anotes[i].time + anotes[i].length) > 50:
+                if a.start - anotes[i].end > 50:
                     return False
             return True
 
@@ -237,11 +237,11 @@ class VSQEditor(object):
                 continue
             else:
                 u_dyn = self.get_dynamics_curve(
-                        match_anotes[0].time,
-                        match_anotes[-1].time + match_anotes[-1].length)
+                        match_anotes[0].start,
+                        match_anotes[-1].end)
                 u_pit = self.get_pitch_curve(
-                        match_anotes[0].time,
-                        match_anotes[-1].time + match_anotes[-1].length)
+                        match_anotes[0].start,
+                        match_anotes[-1].end)
                 pp(u_dyn)
                 u_dyn_curve = [v['value'] for v in u_dyn]
                 u_pit_curve = [v['value'] for v in u_pit]
