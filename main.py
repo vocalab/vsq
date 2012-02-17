@@ -26,45 +26,58 @@ class ParserPage(webapp.RequestHandler):
         editor = VSQEditor(binary = data)
         lyrics = editor.get_lyrics()
         rules = [zuii_rule, san_rule]
-        #candidates = editor.get_rule_cands(zuii_rule)
-        #candidates.update(editor.get_rule_cands(san_rule))
+        output_rules = []
 
-        output_lyrics = []
-        candidates_keys = []
-        for i, r in enumerate(rules):
+        for r in rules:
             before_index = 0
             candidate_keys = []
             candidates = editor.get_rule_cands(r)
-            output_lyrics.append("")
+            output_lyric = ""
             for key, value in sorted(candidates.items(), key=lambda x:x[1]["s_index"]):
                 s_index = value["s_index"]
                 e_index = value["e_index"]
-                output_lyrics[i] += lyrics[before_index:s_index].encode('utf-8') if (s_index > before_index) else ""
-                output_lyrics[i] += "<span id=\"range"+key+"\" class=\"chooseable\">"+ lyrics[s_index:e_index].encode('utf-8') + "</span>"
+                output_lyric += lyrics[before_index:s_index].encode('utf-8') if (s_index > before_index) else ""
+                output_lyric += "<span id=\"range"+key+"\" class=\"chooseable\">"+ lyrics[s_index:e_index].encode('utf-8') + "</span>"
                 before_index = e_index
                 candidate_keys.append(key)
-            output_lyrics[i] += lyrics[before_index:].encode('utf-8') if (before_index != len(lyrics)) else ""
-            candidates_keys.append(candidate_keys)
+            output_lyric += lyrics[before_index:].encode('utf-8') if (before_index != len(lyrics)) else ""
+            output_rules.append({"lyric":output_lyric, "keys":candidate_keys, "name":r["name"]})
 
-        memcache.set_multi({ "data": data,
+        memcache.set_multi({ "editor": editor,
             "name": file_name },
             key_prefix="vsq_", time=3600)
         template_values = {
-                'lyrics': zip(candidates_keys, output_lyrics)
-                }
+            'rules': output_rules,
+            'vsq_length': editor.end_time - editor.start_time
+            }
         path = os.path.join(os.path.dirname(__file__), 'parse.html')
         self.response.out.write(template.render(path, template_values))
 
+class AppliedLyricJSON(webapp.RequestHandler):
+    def get(self):
+        editor = memcache.get("vsq_editor")
+        anotes = editor.get_anotes();
+
+        anote_list = [{"lyric":a.lyric.encode('utf-8'), "start_time":a.start, "length":a.length} for a in anotes]
+
+        self.response.content_type = "application/json"
+        self.response.out.write(json.dumps(anote_list))
+
 class AppliedVsqJSON(webapp.RequestHandler):
     def post(self):
-        data = memcache.get("vsq_data")
-        editor = VSQEditor(binary = data)
+        editor = memcache.get("vsq_editor")
+        file_name = memcache.get("vsq_name")
         candidates = editor.get_rule_cands(zuii_rule)
         candidates.update(editor.get_rule_cands(san_rule))
-        keys = self.request.get_all("rule")
+        select_keys = self.request.get_all("rule")
 
-        for key in keys:
-            editor.apply_rule(candidates[key])
+        for key, value in candidates.items():
+            if key in select_keys:
+                editor.apply_rule(value)
+            else:
+                editor.unapply_rule(value)
+        memcache.replace_multi({ "editor": editor,
+            "name": file_name }, time=3600, key_prefix="vsq_")
         dyn_list = [[p['time'],p['value']] for p in editor.get_dynamics_curve()]
         pit_list = [[p['time'],p['value']] for p in editor.get_pitch_curve()]
         self.response.content_type = "application/json"
@@ -72,23 +85,22 @@ class AppliedVsqJSON(webapp.RequestHandler):
 
 class DownloadPage(webapp.RequestHandler):
     def post(self):
-        data = memcache.get("vsq_data")
+        editor = memcache.get("vsq_editor")
         file_name = memcache.get("vsq_name")
-        editor = VSQEditor(binary = data)
-        candidates = editor.get_rule_cands(zuii_rule)
-        candidates.update(editor.get_rule_cands(san_rule))
-        keys = self.request.get_all("rule")
-
-        for key in keys:
-            editor.apply_rule(candidates[key])
-        self.response.headers['Content-Type'] = "application/x-vsq; charset=Shift_JIS"
-        self.response.headers['Content-disposition'] = "filename=" + file_name.encode("utf-8")
-        self.response.out.write(editor.unparse())
+        if editor is None or file_name is None:
+            print 'Content-Type: text/plain'
+            print ''
+            print '<p>セッション切れです。<a href="/">トップ</a>へ戻ってもう一度作業してください。</p>'
+        else:
+            self.response.headers['Content-Type'] = "application/x-vsq; charset=Shift_JIS"
+            self.response.headers['Content-disposition'] = "filename=" + file_name.encode("utf-8")
+            self.response.out.write(editor.unparse())
 
 application = webapp.WSGIApplication(
                                         [('/', MainPage),
                                          ('/parse', ParserPage),
                                          ('/appliedvsq', AppliedVsqJSON),
+                                         ('/appliedlyric', AppliedLyricJSON),
                                          ('/download', DownloadPage)],
                                         debug=True)
 
