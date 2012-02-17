@@ -68,7 +68,7 @@ san_rule = {"rule_id":"R0",
         "name":"さんの前のdynを下げる",
         "regexp":u".さn",
         "connect":True,
-        "relative_notes":[0,-2,0],
+        "relative_notes":None,
         "dyn_curves":dyn_curves,
         "pit_curves":[]}
 
@@ -77,11 +77,21 @@ zuii_pit_curves = [lowpass(-10000,0,0.8)]
 
 
 zuii_rule = {"rule_id":"R1",
-        "name":"ずぃの最後お下げる",
+        "name":"ずぃの最後を下げる",
         "connect":False,
         "regexp":u"ずぃ",
         "relative_notes":None,
         "dyn_curves":zuii_dyn_curves,
         "pit_curves":zuii_pit_curves}
+
+class Rule(object):
+    def __init__(self):
+        pass
+
+    def apply(self, editor):
+        pass
+
+
+
 
 
