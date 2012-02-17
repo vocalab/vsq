@@ -20,6 +20,14 @@ header h1{
   background: #41cde2;
   cursor: pointer;
 }
+#float-lyric {
+  position: absolute;
+}
+.anote {
+  z-index: 2;
+  position: absolute;
+  top: 0px;
+}
 
 #rule-form p{
   /*white-space: nowrap;*/

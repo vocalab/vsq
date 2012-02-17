@@ -148,7 +148,16 @@ $(document).ready(function(){
         }
     clickedCandidate.change();
     });
-    $("#dynchart").css("width", vsq_length / 10);
-    $("#pitchart").css("width", vsq_length / 10);
+    $("#dynchart").css({width: vsq_length / 10 + 200 + "px"});
+    $("#pitchart").css({width: vsq_length / 10 + 200 + "px"});
+
     changeGraph();
+    jQuery.getJSON("/appliedlyric", function(anote){
+        init_time = anote[0].start_time;
+        for (var i=0; i < anote.length; i++) {
+            span = $("<span>").addClass("anote").css({left: (anote[i].start_time - init_time) / 10 + 80 + "px"}).html(anote[i].lyric);
+            $("#float-lyric").append(span);
+        };
+    });
+    $("#float-lyric").css({width: vsq_length / 10 + "px"});
 });

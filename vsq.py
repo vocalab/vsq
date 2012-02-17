@@ -241,8 +241,7 @@ class VSQEditor(object):
                         match_anotes[-1].end)
                 u_pit = self.get_pitch_curve(
                         match_anotes[0].start,
-                        match_anotes[-1].end)
-                pp(u_dyn)
+                        match_anotes[-1].end + match_anotes[-1].length)
                 u_dyn_curve = [v['value'] for v in u_dyn]
                 u_pit_curve = [v['value'] for v in u_pit]
                 rule_i = {"instance_id":"I"+str(i),

@@ -28,7 +28,7 @@ class ParserPage(webapp.RequestHandler):
         rules = [zuii_rule, san_rule]
         output_rules = []
 
-        for i, r in enumerate(rules):
+        for r in rules:
             before_index = 0
             candidate_keys = []
             candidates = editor.get_rule_cands(r)
@@ -47,11 +47,21 @@ class ParserPage(webapp.RequestHandler):
             "name": file_name },
             key_prefix="vsq_", time=3600)
         template_values = {
-                'rules': output_rules,
-                'vsq_length': editor.end_time
-                }
+            'rules': output_rules,
+            'vsq_length': editor.end_time - editor.start_time
+            }
         path = os.path.join(os.path.dirname(__file__), 'parse.html')
         self.response.out.write(template.render(path, template_values))
+
+class AppliedLyricJSON(webapp.RequestHandler):
+    def get(self):
+        editor = memcache.get("vsq_editor")
+        anotes = editor.get_anotes();
+
+        anote_list = [{"lyric":a.lyric.encode('utf-8'), "start_time":a.start, "length":a.length} for a in anotes]
+
+        self.response.content_type = "application/json"
+        self.response.out.write(json.dumps(anote_list))
 
 class AppliedVsqJSON(webapp.RequestHandler):
     def post(self):
@@ -90,6 +100,7 @@ application = webapp.WSGIApplication(
                                         [('/', MainPage),
                                          ('/parse', ParserPage),
                                          ('/appliedvsq', AppliedVsqJSON),
+                                         ('/appliedlyric', AppliedLyricJSON),
                                          ('/download', DownloadPage)],
                                         debug=True)
 
