@@ -303,7 +303,7 @@ class VSQEditor(object):
 '''
 if __name__ == '__main__':
     editor = VSQEditor(binary=open('test.vsq', 'r').read())
-    enable = [6,3]
+    enable = [8]
     
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable: 
@@ -352,7 +352,17 @@ if __name__ == '__main__':
 
     #ノート挿入テスト(Anoteクラス実装後版)
     if 8 in enable:
-        editor.current_track.anotes.append(10000,64,u"お")
+        note = {
+            "time": 3200,
+            "note": 64,
+            "lyric": u"byo",
+            "length": 120,
+            "vibrato": None,
+            }
+        pp([l.get_phonetic() for l in editor.current_track.anotes])
+        editor.current_track.anotes.append(Anote(**note))
+        pp([l.get_phonetic() for l in editor.current_track.anotes])
+
 
     #3.編集結果をunparseして書きこむ
     if 3 in enable:
