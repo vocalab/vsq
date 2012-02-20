@@ -3,7 +3,16 @@ from struct import *
 
 
 class Header(object):
-    """MIDIヘッダを扱うクラス"""
+    """MIDIヘッダを扱うクラス
+    Attributes:
+        data: MIDIヘッダ情報を格納するディクショナリ
+            {"MThd": ヘッダチャンクであることを表す文字列"MThd",
+             "size": ヘッダチャンクのサイズ（byte）,
+             "format": SMFのフォーマットタイプ,
+             "track_num": トラック数（マスタートラックを含む）
+             "time_div":
+             4分音符分のデルタタイム或いはタイムコードに基づいた1秒の分数}
+    """
     def __init__(self, fp):
         self.parse(fp)
 
@@ -31,5 +40,3 @@ class Header(object):
             self.data['track_num'],
             self.data['time_div'])
         return binary
-
-

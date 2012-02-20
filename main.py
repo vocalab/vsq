@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-import cgi
+import logging
 from google.appengine.ext.webapp import template
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
@@ -28,20 +28,22 @@ class ParserPage(webapp.RequestHandler):
         rules = [zuii_rule, san_rule]
         output_rules = []
 
+
         for r in rules:
             before_index = 0
             candidate_keys = []
             candidates = editor.get_rule_cands(r)
             output_lyric = ""
-            for key, value in sorted(candidates.items(), key=lambda x:x[1]["s_index"]):
+            for value in sorted(candidates, key=lambda x:x["s_index"]):
                 s_index = value["s_index"]
                 e_index = value["e_index"]
                 output_lyric += lyrics[before_index:s_index].encode('utf-8') if (s_index > before_index) else ""
-                output_lyric += "<span id=\"range"+key+"\" class=\"chooseable\">"+ lyrics[s_index:e_index].encode('utf-8') + "</span>"
+                output_lyric += "<span id=\"range"+value['id']+"\" class=\"chooseable\">"+ lyrics[s_index:e_index].encode('utf-8') + "</span>"
                 before_index = e_index
-                candidate_keys.append(key)
+                candidate_keys.append(value['id'])
             output_lyric += lyrics[before_index:].encode('utf-8') if (before_index != len(lyrics)) else ""
             output_rules.append({"lyric":output_lyric, "keys":candidate_keys, "name":r["name"]})
+
 
         memcache.set_multi({ "editor": editor,
             "name": file_name },
@@ -68,14 +70,16 @@ class AppliedVsqJSON(webapp.RequestHandler):
         editor = memcache.get("vsq_editor")
         file_name = memcache.get("vsq_name")
         candidates = editor.get_rule_cands(zuii_rule)
-        candidates.update(editor.get_rule_cands(san_rule))
-        select_keys = self.request.get_all("rule")
+        candidates.extend(editor.get_rule_cands(san_rule))
+        select_ids = self.request.get_all("rule")
 
-        for key, value in candidates.items():
-            if key in select_keys:
-                editor.apply_rule(value)
+        logging.info(str(candidates))
+        for c in candidates:
+            if c['id'] in select_ids:
+                editor.apply_rule(c)
             else:
-                editor.unapply_rule(value)
+                editor.unapply_rule(c)
+
         memcache.replace_multi({ "editor": editor,
             "name": file_name }, time=3600, key_prefix="vsq_")
         dyn_list = [[p['time'],p['value']] for p in editor.get_dynamics_curve()]
