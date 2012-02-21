@@ -179,6 +179,7 @@ class VSQEditor(object):
                                 anotes[i].start,
                                 anotes[i].end,
                                 curve['stretch'])
+        anotes[0].d_options['PMbPortamentoUse'] = rule_i['rule']['portamento']
 
     def unapply_rule(self, rule_i):
         """ルールの適用をもとに戻す
@@ -303,7 +304,7 @@ class VSQEditor(object):
 '''
 if __name__ == '__main__':
     editor = VSQEditor(binary=open('test.vsq', 'r').read())
-    enable = [6,3]
+    enable = [6,5]
     
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable: 
