@@ -84,6 +84,15 @@ zuii_rule = {"rule_id":"R1",
         "dyn_curves":zuii_dyn_curves,
         "pit_curves":zuii_pit_curves}
 
+port_rule = {"rule_id":"R3",
+        "name":"ああにポルタメントを付加する",
+        "connect":True,
+        "regexp":u"ああ",
+        "relative_notes":None,
+        "portamento":None,
+        "dyn_curves":[],
+        "pit_curves":[]}
+
 class Rule(object):
     def __init__(self):
         pass

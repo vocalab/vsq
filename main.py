@@ -25,12 +25,12 @@ class ParserPage(webapp.RequestHandler):
         file_name = self.request.body_file.vars['file'].filename
         editor = VSQEditor(binary = data)
         lyrics = editor.get_lyrics()
-        rules = [zuii_rule, san_rule]
+        rules = [zuii_rule, san_rule,port_rule]
         output_rules = []
 
         for r in rules:
             before_index = 0
-            candidate_keys = []
+            candidate_keys = []          
             candidates = editor.get_rule_cands(r)
             output_lyric = ""
             for key, value in sorted(candidates.items(), key=lambda x:x[1]["s_index"]):
