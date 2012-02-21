@@ -187,13 +187,17 @@ class VSQEditor(object):
         anotes = self.get_anotes_f_lyric_i(rule_i['s_index'],rule_i['e_index'])
         start_time = anotes[0].start
         end_time = anotes[-1].end
-        self.set_dynamics_curve(rule_i['undyn'], 
-                                start_time,
-                                end_time)
 
-        self.set_pitch_curve(rule_i['unpit'], 
-                                start_time,
-                                end_time)
+        dynamics_list = self.current_track.data['DynamicsBPList']
+        pitch_list = self.current_track.data['PitchBendBPList']
+        for p in self.get_dynamics_curve(start_time,end_time):
+            self.current_track.data['DynamicsBPList'].remove(p)
+        for p in self.get_pitch_curve(start_time,end_time):
+            self.current_track.data['PitchBendBPList'].remove(p)
+        dynamics_list.extend(rule_i['undyn'])
+        pitch_list.extend(rule_i['unpit'])
+        dynamics_list.sort()
+        pitch_list.sort()
 
     def get_rule_cands(self, rule):
         """ルール適用候補を取得する
@@ -242,14 +246,12 @@ class VSQEditor(object):
                 u_pit = self.get_pitch_curve(
                         match_anotes[0].start,
                         match_anotes[-1].end + match_anotes[-1].length)
-                u_dyn_curve = [v['value'] for v in u_dyn]
-                u_pit_curve = [v['value'] for v in u_pit]
                 rule_i = {"instance_id":"I"+str(i),
                         "rule":rule,
                         "s_index":s,
                         "e_index":e,
-                        "undyn":u_dyn_curve,
-                        "unpit":u_pit_curve}
+                        "undyn":u_dyn,
+                        "unpit":u_pit}
                 rule_dic[rule['rule_id']+rule_i['instance_id']] = rule_i
 
         return rule_dic
@@ -303,7 +305,7 @@ class VSQEditor(object):
 '''
 if __name__ == '__main__':
     editor = VSQEditor(binary=open('test.vsq', 'r').read())
-    enable = [6,3]
+    enable = [8]
     
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable: 
@@ -338,21 +340,34 @@ if __name__ == '__main__':
     
     #6.ルール適用テスト
     if 6 in enable:
-        rule_cands = editor.get_rule_cands(san_rule)
+        rule_cands = editor.get_rule_cands(zuii_rule)
+        for i in rule_cands.values():
+            print i['undyn']
+    
         print "\nbefore"
-        print editor.get_dynamics_curve(20600,21000)
+        print editor.get_dynamics_curve(6740,6820)
         for rule_i in rule_cands.values():
             editor.apply_rule(rule_i)
         print "\napplyied"
-        print editor.get_dynamics_curve(20600,21000)
+        print editor.get_dynamics_curve(6740,6820)
         for rule_i in rule_cands.values():
             editor.unapply_rule(rule_i)
         print "\nunapplyed"
-        print editor.get_dynamics_curve(20600,21000)
+        print editor.get_dynamics_curve(6740,6820)
 
     #ノート挿入テスト(Anoteクラス実装後版)
     if 8 in enable:
-        editor.current_track.anotes.append(10000,64,u"お")
+        note = {
+            "time": 3200,
+            "note": 64,
+            "lyric": u"byo",
+            "length": 120,
+            "vibrato": None,
+            }
+        pp([l.get_phonetic() for l in editor.current_track.anotes])
+        editor.current_track.anotes.append(Anote(**note))
+        pp([l.get_phonetic() for l in editor.current_track.anotes])
+
 
     #3.編集結果をunparseして書きこむ
     if 3 in enable:

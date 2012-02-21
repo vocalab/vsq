@@ -77,6 +77,8 @@ class Anote(object):
             'Length': str(self.length),
             'Note#': str(self.note)
             }
+        for key, value in self.options.items():
+            self.options[key] = str(value)
         event.update(self.options)
         if self.vibrato:
             vd = int((1-int(self.vibrato['Length'])/100.0)*self.length/5) * 5
@@ -293,11 +295,13 @@ class NormalTrack(object):
             if t == 'Anote': 
                 lyric = details[e.pop('LyricHandle')]
                 vibrato = details.pop(e.pop('VibratoHandle',None), None)
+                for key, value in e.items():
+                    e[key] = int(value)
                 params = {
                     'time': int(time),
-                    'note': int(e.pop('Note#')),
+                    'note': e.pop('Note#'),
                     'lyric': lyric['lyric'],
-                    'length': int(e.pop('Length')),
+                    'length': e.pop('Length'),
                     'vibrato': vibrato,
                     'options': e}
                 anotes.append(Anote(**params))
@@ -309,8 +313,7 @@ class NormalTrack(object):
         return anotes, singers
 
     def __unpack_events(self, anotes, singers):
-        packed = anotes[:]
-        packed.extend(singers)
+        packed = anotes + singers
         packed.sort(key=lambda x:int(x.start))
 
         details = []
