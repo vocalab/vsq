@@ -58,9 +58,19 @@ class ParserPage(webapp.RequestHandler):
 class AppliedLyricJSON(webapp.RequestHandler):
     def get(self):
         editor = memcache.get("vsq_editor")
+        candidates = editor.get_rule_cands(zuii_rule)
+        candidates.extend(san_rule)
         anotes = editor.get_anotes();
-
-        anote_list = [{"lyric":a.lyric.encode('utf-8'), "start_time":a.start, "length":a.length} for a in anotes]
+        anote_list = []
+        for a in anotes:
+            anote_for_json = {"lyric": a.lyric.encode('utf-8'),
+                              "start_time": a.start,
+                              "length": a.lengh,
+                              "rules": []}
+            for c in candidates:
+                if a in c['anotes']:
+                    anote_for_json['rules'].append(c['id'])
+            anote_list.append(anote_for_json)
 
         self.response.content_type = "application/json"
         self.response.out.write(json.dumps(anote_list))

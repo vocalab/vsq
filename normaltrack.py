@@ -49,7 +49,7 @@ class Anote(object):
             {"PMBendDepth": ベンドの深さ,
              "PMBendLength": ベンドの長さ,
              "PMbPortamentoUse":
-                「〜形でポルタメントを付加」の指定内容。
+                「〜形でポルタメントを付加」の指定内容
                 「上行形で〜」が指定されていれば+1
                 「下行形で〜」が指定されていれば+2,
              "DEMdecGainRate" ディケイ,

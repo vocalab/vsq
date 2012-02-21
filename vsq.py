@@ -16,7 +16,7 @@ class VSQEditor(object):
         track_num: ノーマルトラック数
         normaltracks: normaltrackインスタンスのリスト（normaltrack.pyを参照）
         current_track: 操作対象トラック
-        start_time: シーケンスの先端時間（各トラックにおける実質先端時間）
+        start_time: シーケンスの始端時間
         end_time: シーケンスの終端時間
     """
 
@@ -43,7 +43,7 @@ class VSQEditor(object):
 
         self.unapply_dict = {}
 
-        #トラックの先端時間（プリメジャータイムを除いた時間）を求める
+        #トラックの始端時間（プリメジャータイムを除いた時間）を求める
         pre_measure = int(self.normal_tracks[0].data['Master']['PreMeasure'])
         nn, dd, _, _ = self.master_track.beat
         time_div = self.header.data['time_div']
@@ -218,6 +218,9 @@ class VSQEditor(object):
         Args:
             rule_i: get_rule_candsメソッドによって得られたルール適用候補
         """
+        if not rule_i['id'] in self.unapply_dict:
+            return False
+
         rule_i = self.unapply_dict[rule_i['id']]
         anotes = self.get_anotes_f_lyric_i(rule_i['s_index'], rule_i['e_index'])
         start_time = anotes[0].start
@@ -233,6 +236,7 @@ class VSQEditor(object):
         pitch_list.extend(rule_i['unpit'])
         dynamics_list.sort()
         pitch_list.sort()
+        return True
 
     def get_rule_cands(self, rule):
         """ルール適用候補を取得する
@@ -281,6 +285,7 @@ class VSQEditor(object):
             else:
                 rule_i = {"id": rule['rule_id'] + 'I' + str(i),
                         "rule": rule,
+                        "anotes": match_anotes,
                         "s_index": s,
                         "e_index": e}
                 u_dyn = self.get_dynamics_curve(
@@ -350,7 +355,7 @@ class VSQEditor(object):
 '''
 if __name__ == '__main__':
     editor = VSQEditor(binary=open('test.vsq', 'r').read())
-    enable = [6]
+    enable = [8]
 
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable:

@@ -187,6 +187,6 @@ class FakeFile(object):
     def tell(self):
         """現在の読み出し開始インデックスを返す
         Returns:
-            読み出し開始インデックス
+            現在の読み出し開始インデックス
         """
         return self._index
