@@ -1,4 +1,5 @@
 $(document).ready(function(){
+    $("body").css({width: vsq_length / 10 + 200 + "px"});
     var dynChart = new Highcharts.Chart({
         chart: {
             renderTo: 'dynchart',
@@ -148,14 +149,16 @@ $(document).ready(function(){
         }
     clickedCandidate.change();
     });
-    $("#dynchart").css({width: vsq_length / 10 + 200 + "px"});
-    $("#pitchart").css({width: vsq_length / 10 + 200 + "px"});
 
     changeGraph();
     jQuery.getJSON("/appliedlyric", function(anote){
         init_time = anote[0].start_time;
         for (var i=0; i < anote.length; i++) {
-            span = $("<span>").addClass("anote").css({left: (anote[i].start_time - init_time) / 10 + 80 + "px"}).html(anote[i].lyric);
+            span = $("<span>").addClass("anote").css({left: (anote[i].start_time - init_time) / 10 + $(".highcharts-series > path").offset().left + "px", width: anote[i].length / 10 + "px"}).html(anote[i].lyric).click(function(time){
+                return function(){
+                    console.log(time);
+                }
+            }(anote[i].start_time));
             $("#float-lyric").append(span);
         };
     });

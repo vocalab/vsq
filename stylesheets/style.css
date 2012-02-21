@@ -27,6 +27,12 @@ header h1{
   z-index: 2;
   position: absolute;
   top: 0px;
+  background: #3cc;
+  border: solid 1px #066;
+  opacity: 0.7;
+}
+#pitchart {
+  margin-top: 50px;
 }
 
 #rule-form p{
