@@ -69,6 +69,7 @@ class AppliedVsqJSON(webapp.RequestHandler):
         file_name = memcache.get("vsq_name")
         candidates = editor.get_rule_cands(zuii_rule)
         candidates.update(editor.get_rule_cands(san_rule))
+        candidates.update(editor.get_rule_cands(port_rule))        
         select_keys = self.request.get_all("rule")
 
         for key, value in candidates.items():

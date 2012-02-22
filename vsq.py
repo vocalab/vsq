@@ -179,7 +179,7 @@ class VSQEditor(object):
                                 anotes[i].start,
                                 anotes[i].end,
                                 curve['stretch'])
-        anotes[0].d_options['PMbPortamentoUse'] = rule_i['rule']['portamento']
+        anotes[0].options['PMbPortamentoUse'] = rule_i['rule']['portamento']
 
     def unapply_rule(self, rule_i):
         """ルールの適用をもとに戻す
@@ -304,7 +304,7 @@ class VSQEditor(object):
 '''
 if __name__ == '__main__':
     editor = VSQEditor(binary=open('test.vsq', 'r').read())
-    enable = [1,4,5]
+    enable = [5]
     
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable: 
@@ -333,9 +333,10 @@ if __name__ == '__main__':
     if 5 in enable:
         print "\nrelativze_notes:"
         anotes = editor.get_anotes()
-        relative_notes = [0] + [anote['note'] - anotes[i]['note'] 
-                                    for i, anote in enumerate(anotes[1:])]
-        print relative_notes
+        for i, anote in enumerate(anotes[1:]):
+        	relative_notes += [0] + [anote['note'] - anotes[i]['note']]
+ #                                   for i, anote in enumerate(anotes[1:])]
+ 		print relative_notes
     
     #6.ルール適用テスト
     if 6 in enable:
@@ -358,3 +359,12 @@ if __name__ == '__main__':
     #3.編集結果をunparseして書きこむ
     if 3 in enable:
         editor.unparse('out.vsq')
+        
+    if 9 in enable:
+    	i = 0
+    	porta = []
+    	anotes = editor.get_anotes()
+    	while i<=107:
+    		i = i+1
+    		porta.append(anotes[i].options['PMbPortamentoUse']);
+		print porta
