@@ -27,10 +27,6 @@ class ParserPage(webapp.RequestHandler):
         lyrics = editor.get_lyrics()
         rules = [zuii_rule, san_rule,port_rule]
         output_rules = []
-        
-        anotes = editor.get_anotes_f_lyric_i()
-        #for i, anote in enumerate(anotes[1:])
-        #        relative_notes = [0] + [anote['note'] - anotes[i]['note']]
 
         for r in rules:
             before_index = 0

@@ -304,7 +304,7 @@ class VSQEditor(object):
 '''
 if __name__ == '__main__':
     editor = VSQEditor(binary=open('test.vsq', 'r').read())
-    enable = [6,5]
+    enable = [1,4,5]
     
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable: 
@@ -331,7 +331,7 @@ if __name__ == '__main__':
     
     #5.相対音階を表示（前のノートとの差をとる）
     if 5 in enable:
-        print "\nrelative_notes:"
+        print "\nrelativze_notes:"
         anotes = editor.get_anotes()
         relative_notes = [0] + [anote['note'] - anotes[i]['note'] 
                                     for i, anote in enumerate(anotes[1:])]
