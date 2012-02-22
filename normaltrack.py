@@ -123,9 +123,9 @@ class Anote(object):
             'Length': str(self.length),
             'Note#': str(self.note)
             }
-        for key, value in self.options.items():
-            self.options[key] = str(value)
-        event.update(self.options)
+        for key, value in self.prop.items():
+            self.prop[key] = str(value)
+        event.update(self.prop)
         if self.vibrato:
             vd = int((1 - int(self.vibrato['Length']) / 100.0) *
                     self.length / 5) * 5
