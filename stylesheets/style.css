@@ -1,3 +1,17 @@
+body, h1 {
+  padding: 0;
+  margin: 0;
+}
+
+header h1{
+  background: #007477;
+  padding-left: 10px;
+  color: #fff;
+}
+#main {
+  width: 400px;
+  padding-left: 20px;
+}
 .chooseable {
   background: #666;
   cursor: pointer;
@@ -5,4 +19,22 @@
 .choosen {
   background: #41cde2;
   cursor: pointer;
+}
+#float-lyric {
+  position: absolute;
+}
+.anote {
+  z-index: 2;
+  position: absolute;
+  top: 0px;
+  background: #3cc;
+  border: solid 1px #066;
+  opacity: 0.7;
+}
+#pitchart {
+  margin-top: 50px;
+}
+
+#rule-form p{
+  /*white-space: nowrap;*/
 }
