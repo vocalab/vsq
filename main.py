@@ -42,7 +42,7 @@ class ParserPage(webapp.RequestHandler):
                 before_index = e_index
                 candidate_keys.append(value['id'])
             output_lyric += lyrics[before_index:].encode('utf-8') if (before_index != len(lyrics)) else ""
-            output_rules.append({"lyric":output_lyric, "keys":candidate_keys, "name":r["name"]})
+            output_rules.append({"lyric":output_lyric, "keys":candidate_keys, "name":r["name"], "key": r["rule_id"]})
 
 
         memcache.set_multi({ "editor": editor,
