@@ -12,7 +12,7 @@ from vsq import *
 class MainPage(webapp.RequestHandler):
     def get(self):
         template_values = {
-                'greeting': 'VSQファイルを解析し、加工するプログラムです',
+                'greeting': 'VSQファイルを解析し、加工するプログラムです<br>画像はwin内のデータを使っているので、完成次第差し替えてください。',
                 
                 }
 
