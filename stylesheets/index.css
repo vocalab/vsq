@@ -1,17 +1,43 @@
-body {
-  font-family: Verdana, Helvetica, sans-serif;
-  margin: 0;
-  padding: 0;
-  font-size: 100%;
-  background: #ccc;
+@charset "utf-8";
+@import "reset.css";
+html{
+	height:100%;
+}
+body{
+	height: 2000px;
+	font-family: Verdana, Helvetica, sans-serif;
+	background: url("../images/chrysant.jpg");
+	background-repeat:no-repeat;
+	background-position:100% 100%; 
+	background-attachment: fixed; 
+	background-color:#aaaaaa;
 }
 #wrapper{
-  width: 800px;
-  margin: 0 auto;
-  background: #fff;
+
 }
 div#header {
-  background: #ccc;
-  width: 100%;
-  height: 100px;
+	background: black;
+	margin:0 0 20px 0;
+}
+
+#content {
+	font-size:small;
+	text-align:center;
+	width:100%;
+}
+#content_image{
+}
+#content_form{
+}
+#content_explanation{
+}
+#floating_image{
+	width: 500px;
+	height: 200px;
+
+}
+h1{
+	margin:auto;
+	font-size:20px;
+	color:white;
 }
