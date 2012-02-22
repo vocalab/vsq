@@ -67,6 +67,7 @@ class Anote(object):
     _phonetic = ''
     _length = 0
     _end = 0
+    _start = 0
 
     def __init__(self, time, note, lyric=u"a", length=120,
             dynamics=64, vibrato=None, prop=d_prop):
@@ -77,6 +78,7 @@ class Anote(object):
         self.dynamics = dynamics
         self.vibrato = vibrato
         self.prop = prop
+        self.identifier = None
 
     def __str__(self):
         return tools.pp_str({
@@ -116,6 +118,9 @@ class Anote(object):
 
     def get_end(self):
         return self._end
+
+    def set_identifier(self, tag):
+        self.identifier = tag
 
     lyric = property(get_lyric, set_lyric)
     phonetic = property(get_phonetic, set_phonetic)
