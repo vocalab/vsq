@@ -10,6 +10,9 @@ $(document).ready(function(){
             text: "dynamics curve"
         },
         yAxis: {
+        	title: {
+        		text: 'dynamics'
+        	},
             max: 128,
             min: 0
         },
@@ -47,6 +50,7 @@ $(document).ready(function(){
             }
         },
         series:[{
+        	name: 'dynamics',
             data: []
         }]
     });
@@ -61,6 +65,9 @@ $(document).ready(function(){
             text: "pitch curve"
         },
         yAxis: {
+        	title: {
+        		text: 'pitch'
+        	},
             max: 30000,
             min: -30000
         },
@@ -94,6 +101,7 @@ $(document).ready(function(){
                 }
             },
             series: {
+            	name: 'pitch',
                 step: true
             }
         },
