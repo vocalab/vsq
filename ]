@@ -121,12 +121,12 @@ $(document).ready(function(){
                 $(this).removeClass("chooseable");
             });
             $(".anote").filter(function(){
-                if($(this).attr("class").indexOf($(obj).val()) !== -1){
-                    return true;
-                } else {
-                    return false;
-                }
-            }).addClass("chooseable");
+                return false;
+            });
+            // + $(obj).val().split("I")[0]).addClass("chooseable");
+            $(".candR1I0").each(function(){
+                console.log($(this).attr("class"));
+            });
         }
     }
     var changeGraph = function(){
@@ -144,8 +144,10 @@ $(document).ready(function(){
         changeHighlight(this);
         changeGraph();
     });
+    $("input:checkbox").each(function(){ changeHighlight(this)} );
     $("select").change(function(){ selectRule($(this).children("option:selected")) });
     $(".rule").css("display", "none");
+    $("select > option").each(function(){ selectRule(this)} );
     $(".chooseable").click(function(){
         var clickedCandidate = $("input:checkbox[value="+$(this).attr("id").slice(5)+"]")
         if(clickedCandidate.attr("checked") === "checked"){
@@ -182,9 +184,6 @@ $(document).ready(function(){
             }
             $("#float-lyric").append(span);
         };
-        $("#float-lyric").css({width: vsq_length / 10 + "px"});
-        $("select > option:selected").each(function(){ selectRule(this)} );
-        $("input:checkbox").each(function(){ changeHighlight(this)} );
     });
-
+    $("#float-lyric").css({width: vsq_length / 10 + "px"});
 });

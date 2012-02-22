@@ -24,23 +24,21 @@
     </header>
     <form id="rule-form" action="/download" method="post">
       {% for r in rules %}
-      <div id="rule{{ forloop.counter0 }}" class="rule">
-        <p>{{ r.lyric }}</p>
-
+      <div class="cand-inputs">
         {% for key in r.keys %}
         <input type="checkbox" name="rule" value="{{ key }}" style="display: none"/>
         {% endfor %}
       </div>
       {% endfor %}
-      <input type="submit" value="適用">
+      <input type="submit" value="ダウンロード">
     </form>
     <form action="">
       <select name="select_rule">
       {% for r in rules %}
         {% ifequal forloop.counter0 0 %}
-        <option selected="selected" value="0">{{ r.name }}</option>
+        <option selected="selected" value="{{ r.key }}">{{ r.name }}</option>
         {% else %}
-        <option value="{{forloop.counter0}}"/>{{ r.name }}</option>
+        <option value="{{ r.key }}"/>{{ r.name }}</option>
         {% endifequal %}
       {% endfor %}
       </select>
