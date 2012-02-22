@@ -116,7 +116,7 @@ $(document).ready(function(){
         }
     }
     var selectRule = function(obj){
-        if($(obj).attr("checked") === "checked"){
+        if($(obj).attr("selected") === "selected"){
             $(".rule").css("display", "none");
             $("#rule" + $(obj).val()).css("display", "block");
         }
@@ -137,9 +137,9 @@ $(document).ready(function(){
         changeGraph();
     });
     $("input:checkbox").each(function(){ changeHighlight(this)} );
-    $("input:radio").change(function(){ selectRule(this) });
+    $("select").change(function(){ selectRule($(this).children("option:selected")) });
     $(".rule").css("display", "none");
-    $("input:radio").each(function(){ selectRule(this)} );
+    $("select > option").each(function(){ selectRule(this)} );
     $(".chooseable").click(function(){
         var clickedCandidate = $("input:checkbox[value="+$(this).attr("id").slice(5)+"]")
         if(clickedCandidate.attr("checked") === "checked"){
@@ -147,18 +147,18 @@ $(document).ready(function(){
         } else {
             clickedCandidate.attr("checked", "checked");
         }
-    clickedCandidate.change();
+        clickedCandidate.change();
     });
 
     changeGraph();
     jQuery.getJSON("/appliedlyric", function(anote){
         init_time = anote[0].start_time;
         for (var i=0; i < anote.length; i++) {
-            span = $("<span>").addClass("anote").css({left: (anote[i].start_time - init_time) / 10 + $(".highcharts-series > path").offset().left + "px", width: anote[i].length / 10 + "px"}).html(anote[i].lyric).click(function(time){
+            span = $("<span>").addClass("anote").css({left: (anote[i].start_time - init_time) / 10 + $(".highcharts-series > path").offset().left + "px", width: anote[i].length / 10 + "px"}).html(anote[i].lyric).click(function(rule){
                 return function(){
-                    console.log(time);
+                    console.log(rule);
                 }
-            }(anote[i].start_time));
+            }(anote[i].rules[0]));
             $("#float-lyric").append(span);
         };
     });

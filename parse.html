@@ -35,13 +35,15 @@
       <input type="submit" value="適用">
     </form>
     <form action="">
+      <select name="select_rule">
       {% for r in rules %}
         {% ifequal forloop.counter0 0 %}
-        <input type="radio" name="select_rule" checked="checked" value="0">{{ r.name }}
+        <option selected="selected" value="0">{{ r.name }}</option>
         {% else %}
-        <input type="radio" name="select_rule" value="{{forloop.counter0}}"/>{{ r.name }}
+        <option value="{{forloop.counter0}}"/>{{ r.name }}</option>
         {% endifequal %}
       {% endfor %}
+      </select>
     </form>
     <div id="dynchart" style="height: 300px"></div>
     <div id="float-lyric"></div>
