@@ -92,6 +92,15 @@ port_rule = {"rule_id":"R3",
         "portamento":2,
         "dyn_curves":[],
         "pit_curves":[]}
+        
+n_accent_rule = {"rule_id":"R4",
+		"name":"んのアクセントを0にする",
+		"connect":False,
+		"regexp":u"ん",
+		"relative_notes":None,
+		"accent":0,
+		"dyn_curves":[],
+		"pit_curves":[]}
 
 class Rule(object):
     def __init__(self):

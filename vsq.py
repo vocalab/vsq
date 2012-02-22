@@ -180,6 +180,7 @@ class VSQEditor(object):
                                 anotes[i].end,
                                 curve['stretch'])
         anotes[0].options['PMbPortamentoUse'] = rule_i['rule']['portamento']
+        anotes[0].options['DEMaccent'] = rule_i['rule']['accent']
 
     def unapply_rule(self, rule_i):
         """ルールの適用をもとに戻す
@@ -334,7 +335,7 @@ if __name__ == '__main__':
         print "\nrelativze_notes:"
         anotes = editor.get_anotes()
         for i, anote in enumerate(anotes[1:]):
-        	relative_notes += [0] + [anote['note'] - anotes[i]['note']]
+        	relative_notes = [0] + [anote['note'] - anotes[i]['note']]
  #                                   for i, anote in enumerate(anotes[1:])]
  		print relative_notes
     
@@ -359,7 +360,8 @@ if __name__ == '__main__':
     #3.編集結果をunparseして書きこむ
     if 3 in enable:
         editor.unparse('out.vsq')
-        
+    
+    #9.ポルタメントを表示する（仮）
     if 9 in enable:
     	i = 0
     	porta = []
