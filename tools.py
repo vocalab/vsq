@@ -97,7 +97,9 @@ phonetic_table = {
         u"じゃ": u"dZ a", u"ずぃ": u"dz i", u"じゅ": u"dZ M", u"じぇ": u"dZ e", u"じょ": "dZ o",
         u"でぃ": u"d' i", u"でゅ": u"d' M",
         u"びゃ": u"b' a", u"びゅ": u"b' M", u"びぇ": u"b' e", u"びょ": u"b' o",
-        u"ぴゃ": u"p' a", u"ぴゅ": u"p' M", u"ぴぇ": u"p' e", u"ぴょ": u"p' o"
+        u"ぴゃ": u"p' a", u"ぴゅ": u"p' M", u"ぴぇ": u"p' e", u"ぴょ": u"p' o",
+
+        u"てゃ": u"t' a", u"てぃ": u"t' i", u"てゅ": u"t' M", u"てぇ": u"t' e", u"てょ": u"t' o"
     }
 
 #発音記号=>歌詞（ひらがな）の変換テーブル
@@ -136,7 +138,9 @@ phonetic_table.update({
     u"ja": u"dZ a", u"zya": u"dZ a", u"ju": u"dZ M", u"zyu": u"dZ M",  u"je": u"dZ e", u"zye": u"dZ e", u"jo": u"dZ o", u"zyo": u"dZ o",  # じゃじゅじぇじょ
     u"dhi": u"d' i", u"dhu": u"d' M",  # でぃでゅ
     u"bya": u"b' a", u"byu": u"b' M", u"bye": u"b' e", u"byo": u"b' o",  # びゃびゅびぇびょ
-    u"pya": u"p' a", u"pyu": u"p' M", u"pye": u"p' e", u"pyo": u"p' o"  # ぴゃぴゅぴぇぴょ
+    u"pya": u"p' a", u"pyu": u"p' M", u"pye": u"p' e", u"pyo": u"p' o",  # ぴゃぴゅぴぇぴょ
+    u"tha": u"t' a", u"thi": u"t' i", u"thu": u"t' M", u"the": u"t' e", u"tho": u"t' o", # てゃてぃてゅてぇてょ
+    u"s": u"s", u"m": u"m"
     })
 
 
