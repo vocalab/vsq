@@ -91,14 +91,6 @@ zuii_rule = {"rule_id": "R1",
         "dyn_curves": zuii_dyn_curves,
         "pit_curves": zuii_pit_curves}
 
-s_insertion_rule = {
-    "rule_id": "R2",
-    "name": "さ行の発音の前に's'を挿入",
-    "regexp": u"[Ss]\S[aiMeo]",
-    "relative_notes": None,
-    "dyn_curves": None,
-    "pit_curves": None
-    }
 class Rule(object):
     def __init__(self):
         pass
