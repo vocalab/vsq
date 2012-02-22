@@ -78,6 +78,17 @@ class Anote(object):
         self.vibrato = vibrato
         self.prop = prop
 
+    def __str__(self):
+        return tools.pp_str({
+                "start": self.start,
+                "end": self._end,
+                "note": self.note,
+                "length": self._length,
+                "lyric": self._lyric,
+                "dynamics": self.dynamics,
+                "properties": self.prop
+                })
+
     def set_lyric(self, lyric):
         self._lyric = lyric
         self._phonetic = tools.lyric2phonetic(lyric)
@@ -123,9 +134,9 @@ class Anote(object):
             'Length': str(self.length),
             'Note#': str(self.note)
             }
-        for key, value in self.options.items():
-            self.options[key] = str(value)
-        event.update(self.options)
+        for key, value in self.prop.items():
+            self.prop[key] = str(value)
+        event.update(self.prop)
         if self.vibrato:
             vd = int((1 - int(self.vibrato['Length']) / 100.0) *
                     self.length / 5) * 5
@@ -141,7 +152,7 @@ class Anote(object):
         lyric_event = {
             'lyric': self._lyric.encode('shift-jis'),
             'phonetic': self._phonetic.encode('shift-jis'),
-            'lyric_delta': "%8.6f" % 0.000000,
+            'lyric_delta': "%.6f" % 0,
             'protect': "0"
             }
         #ConsonantAdjustmentを追加
@@ -217,31 +228,38 @@ class NormalTrack(object):
         Returns:
             ノーマルトラックバイナリ
         """
-        #トラックチャンクヘッダ
+        # 変数宣言
         data = self.data
-        binary = pack(
-            '>4sI4B',
-            data['MTrk'],
-            data['size'],
-            0x00, 0xff, 0x03, len(data['name']))
-        binary += data['name']
+        track_header = ''
+        binary = ''
 
-        #convert text to textevents
+        # トラック名の変換
+        binary += pack('4B', 0x00, 0xff, 0x03, len(data['name'])) + data['name']
+
+        # テキストデータの変換
         text = self.__unparse_text()
-        step = 119
+        #step = 119
+        step = 127 - len("DM:....:")
         for i in range(0, len(text) - 1, step):
             frame = min(step, len(text) - i)
             binary += pack("4B", 0x00, 0xff, 0x01, frame + 8)
             binary += "DM:%04d:" % (i / step) + text[i:i + frame]
 
-        #Control Change event
+        # コントロールチェンジイベントの変換
         for b in data['cc_data']:
             binary += tools.dtime2binary(b['dtime'])
             binary += pack('3B', *b['cc'])
 
-        #End of Track
+        # End of Track
         binary += data['eot']
-        return binary
+
+        # MTrk と トラックサイズの再計算
+        track_header = pack(
+            '>4sI',
+            data['MTrk'],
+            len(binary)
+            )
+        return track_header + binary
 
     def __parse_text(self, text):
         data = {

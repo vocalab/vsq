@@ -72,7 +72,6 @@ class VSQEditor(object):
         for track in self.normal_tracks:
             binary += track.unparse()
 
-        #オプションに従って出力
         if filename:
             open(filename, 'w').write(binary)
         else:
@@ -354,8 +353,10 @@ class VSQEditor(object):
 8.新しいノートを挿入する
 '''
 if __name__ == '__main__':
-    editor = VSQEditor(binary=open('test.vsq', 'r').read())
-    enable = [8]
+    #editor = VSQEditor(binary=open('test.vsq', 'r').read())
+    #enable = [8]
+    editor = VSQEditor(binary=open('thyla.vsq', 'r').read())
+    enable = [3, 2, 8]
 
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable:
@@ -404,15 +405,19 @@ if __name__ == '__main__':
     #ノート挿入テスト(Anoteクラス実装後版)
     if 8 in enable:
         note = {
-            "time": 3200,
+            "time": editor.end_time,
             "note": 64,
-            "lyric": u"byo",
+            "lyric": u"てゅ",
             "length": 120,
             "vibrato": None,
+            "dynamics": 64
             }
-        pp([l.get_phonetic() for l in editor.current_track.anotes])
-        editor.current_track.anotes.append(Anote(**note))
-        pp([l.get_phonetic() for l in editor.current_track.anotes])
+        a = Anote(**note)
+        print a
+        #print editor.current_track.data["size"]
+        editor.current_track.anotes.append(a)
+        print editor.end_time
+        #print editor.current_track.data["size"]
 
     #3.編集結果をunparseして書きこむ
     if 3 in enable:
