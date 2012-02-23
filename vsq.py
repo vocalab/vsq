@@ -72,7 +72,6 @@ class VSQEditor(object):
         for track in self.normal_tracks:
             binary += track.unparse()
 
-        #オプションに従って出力
         if filename:
             open(filename, 'w').write(binary)
         else:
@@ -340,6 +339,47 @@ class VSQEditor(object):
             e = self.end_time
         return [ev for ev in self.current_track.data[ptype] if s <= ev['time'] <= e]
 
+    def add_note(self, note, force=True):
+        """ノートを追加する関数
+        forceを指定せずにノートの長さが0になるときは知らない^q^
+        Args:
+            note: Anoteクラスの音符イベント
+            force: 前後のノートを削って挿入するかしないか
+        """
+        anotes = self.current_track.anotes
+        s = note.start
+        e = note.end
+        note.set_identifier("target")
+
+        # ノートの追加, ソート
+        anotes.append(note)
+        anotes.sort(key=lambda x: int(x.start))
+        
+        for i, anote in enumerate(anotes):
+            if anote.identifier:
+                prev = i - 1 if 0 < i else -1
+                target = i
+                next = i + 1 if not i >= len(anotes) - 1 else -1
+                anotes[target].identifier = None
+                break
+        if force:               # 前後のノートを削って挿入
+            if s < anotes[prev].end and not prev == -1:
+                self.end_time -= anotes[prev].end - s
+                anotes[prev].length -= anotes[prev].end - s
+            if anotes[next].start < e and not next == -1:
+                self.end_time -= anotes[next].start - e
+                anotes[next].length -= e - anotes[next].start
+                anotes[next].start = e
+        else:                   # 指定したノートを削って挿入
+            if s < anotes[prev].end and not prev == -1:
+                self.end_time -= anotes[prev].end - s
+                anotes[target].length -= anotes[prev].end - s
+                anotes[target].start = anotes[prev].end
+            if anotes[next].start < e and not next == -1:
+                self.end_time -= e - anotes[next].start
+                anotes[target].length -= anotes[next].start - e
+        self.end_time += note.length
+
 
 '''
 テストコード:
@@ -354,8 +394,10 @@ class VSQEditor(object):
 8.新しいノートを挿入する
 '''
 if __name__ == '__main__':
-    editor = VSQEditor(binary=open('test.vsq', 'r').read())
-    enable = [8]
+    #editor = VSQEditor(binary=open('test.vsq', 'r').read())
+    #enable = [8]
+    editor = VSQEditor(binary=open('thyla.vsq', 'r').read())
+    enable = [3, 8]
 
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable:
@@ -403,16 +445,18 @@ if __name__ == '__main__':
 
     #ノート挿入テスト(Anoteクラス実装後版)
     if 8 in enable:
+        anotes = editor.current_track.anotes
+        print editor.end_time
         note = {
-            "time": 3200,
+            "time": 136320,
             "note": 64,
-            "lyric": u"byo",
+            "lyric": u"てゅ",
             "length": 120,
             "vibrato": None,
+            "dynamics": 64
             }
-        pp([l.get_phonetic() for l in editor.current_track.anotes])
-        editor.current_track.anotes.append(Anote(**note))
-        pp([l.get_phonetic() for l in editor.current_track.anotes])
+        editor.add_note(Anote(**note))
+        print editor.end_time
 
     #3.編集結果をunparseして書きこむ
     if 3 in enable:

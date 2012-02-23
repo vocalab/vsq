@@ -91,7 +91,6 @@ zuii_rule = {"rule_id": "R1",
         "dyn_curves": zuii_dyn_curves,
         "pit_curves": zuii_pit_curves}
 
-
 class Rule(object):
     def __init__(self):
         pass
