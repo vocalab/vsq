@@ -153,42 +153,67 @@ $(document).ready(function(){
         changeGraph();
     });
     $("select").change(function(){ selectRule($(this).children("option:selected")) });
-    $(".rule").css("display", "none");
-    $(".chooseable").click(function(){
-        var clickedCandidate = $("input:checkbox[value="+$(this).attr("id").slice(5)+"]")
-        if(clickedCandidate.attr("checked") === "checked"){
-            clickedCandidate.removeAttr("checked");
-        } else {
-            clickedCandidate.attr("checked", "checked");
-        }
-        clickedCandidate.change();
-    });
+    //$(".chooseable").click(function(){
+        //var clickedCandidate = $("input:checkbox[value="+$(this).attr("id").slice(5)+"]")
+        //if(clickedCandidate.attr("checked") === "checked"){
+            //clickedCandidate.removeAttr("checked");
+        //} else {
+            //clickedCandidate.attr("checked", "checked");
+        //}
+        //clickedCandidate.change();
+    //});
 
     changeGraph();
     jQuery.getJSON("/appliedlyric", function(anote){
         init_time = anote[0].start_time;
         for (var i=0; i < anote.length; i++) {
-            span = $("<span>").addClass("anote").css({left: (anote[i].start_time - init_time) / 10 + $(".highcharts-series > path").offset().left + "px", width: anote[i].length / 10 + "px"}).html(anote[i].lyric);
+            span = $("<span>").addClass("lyric").css({width: anote[i].length / 10 + "px"}).html(anote[i].lyric);
+            div = $("<div>").addClass("anote").css({left: (anote[i].start_time - init_time) / 10 + $(".highcharts-series > path").offset().left + "px"});
             if(anote[i].rules.length > 0){
-                span.click(function(rules){
-                    return function(){
-                        for(var i=0; i < rules.length; i++){
-                            var clickedCandidate = $("input:checkbox[value="+rules[i]+"]")
-                            if(clickedCandidate.attr("checked") === "checked"){
-                                clickedCandidate.removeAttr("checked");
-                            } else {
-                                clickedCandidate.attr("checked", "checked");
+                if(anote[i].rules.length < 1){ //本来は===1とする。今はテストのため一つでもポップアップするように変更してある。
+                    span.click(function(rules){
+                        return function(){
+                            for(var i=0; i < rules.length; i++){
+                                var clickedCandidate = $("input:checkbox[value="+rules[i].id+"]");
+                                if(clickedCandidate.attr("checked") === "checked"){
+                                    clickedCandidate.removeAttr("checked");
+                                } else {
+                                    clickedCandidate.attr("checked", "checked");
+                                }
+                                clickedCandidate.change();
                             }
-                            clickedCandidate.change();
                         }
-                    }
-                }(anote[i].rules));
-                span.addClass("chooseable");
+                    }(anote[i].rules));
+                } else {
+                    var ul = $("<ul>").addClass("popup");
+                    for (var j=0; j < anote[i].rules.length; j++) {
+                        var li = $("<li>").click(function(rule){
+                            return function(){
+                                clickedCandidate = $("#rule-form input:checkbox[value="+rule+"]");
+                                if(clickedCandidate.attr("checked") === "checked"){
+                                    clickedCandidate.removeAttr("checked");
+                                } else {
+                                    clickedCandidate.attr("checked", "checked");
+                                }
+                                $(this).parent(".popup").toggle();
+                                console.log(this);
+                                clickedCandidate.change();
+                            };
+                        }(anote[i].rules[j].id)).text(anote[i].rules[j].name);
+                        ul.append(li);
+                    };
+                    span.click(function(){
+                        $(this).siblings("ul").toggle();
+                    });
+                    $(div).append(ul);
+                }
+                div.addClass("chooseable");
                 for (var j=0; j < anote[i].rules.length; j++) {
-                    span.addClass("cand" + anote[i].rules[j]);
+                    div.addClass("cand" + anote[i].rules[j].id);
                 };
             }
-            $("#float-lyric").append(span);
+            div.prepend(span);
+            $("#float-lyric").append(div);
         };
         $("#float-lyric").css({width: vsq_length / 10 + "px"});
         $("select > option:selected").each(function(){ selectRule(this)} );

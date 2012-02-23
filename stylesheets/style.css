@@ -16,15 +16,18 @@ header h1{
   z-index: 2;
   position: absolute;
   top: 0px;
+}
+.lyric {
+  display: block;
   background: #3cc;
   border: solid 1px #066;
   opacity: 0.7;
 }
-.anote.chooseable {
+.chooseable .lyric {
   background: #666;
   cursor: pointer;
 }
-.anote.choosen {
+.choosen .lyric {
   background: #3cf;
   cursor: pointer;
 }
@@ -40,4 +43,20 @@ header h1{
 }
 #cand-inputs {
   display: none;
+}
+.popup {
+  font-size: 80%;
+  display: none;
+  margin: 0;
+  padding: 0;
+  z-index: 3;
+  position: relative;
+  left: 2px;
+  top: -10px;
+  list-style-type: none;
+  background: #ccc;
+  border: 1px solid #333;
+}
+.popup li {
+  border: 1px solid #666;
 }

@@ -69,7 +69,7 @@ class AppliedLyricJSON(webapp.RequestHandler):
                               "rules": []}
             for c in candidates:
                 if a in c['anotes']:
-                    anote_for_json['rules'].append(c['id'])
+                    anote_for_json['rules'].append({"name": c["rule"]["name"], "id": c["id"]})
             anote_list.append(anote_for_json)
 
         self.response.content_type = "application/json"
