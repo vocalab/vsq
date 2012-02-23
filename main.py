@@ -24,7 +24,7 @@ class ParserPage(webapp.RequestHandler):
         data = self.request.get('file')
         file_name = self.request.body_file.vars['file'].filename
         editor = VSQEditor(binary = data)
-        lyrics = editor.get_lyrics()
+        lyrics = editor.anotes.lyrics
         rules = [zuii_rule, san_rule]
         output_rules = []
 
@@ -35,8 +35,8 @@ class ParserPage(webapp.RequestHandler):
             candidates = editor.get_rule_cands(r)
             output_lyric = ""
             for value in sorted(candidates, key=lambda x:x["s_index"]):
-                s_index = value["s_index"]
-                e_index = value["e_index"]
+                s_index = editor.anotes.lyric_index(value["anotes"][0])
+                e_index = editor.anotes.lyric_index(value["anotes"][-1])
                 output_lyric += lyrics[before_index:s_index].encode('utf-8') if (s_index > before_index) else ""
                 output_lyric += "<span id=\"range"+value['id']+"\" class=\"chooseable\">"+ lyrics[s_index:e_index].encode('utf-8') + "</span>"
                 before_index = e_index
@@ -60,9 +60,8 @@ class AppliedLyricJSON(webapp.RequestHandler):
         editor = memcache.get("vsq_editor")
         candidates = editor.get_rule_cands(zuii_rule)
         candidates.extend(editor.get_rule_cands(san_rule))
-        anotes = editor.get_anotes();
         anote_list = []
-        for a in anotes:
+        for a in editor.anotes:
             anote_for_json = {"lyric": a.lyric.encode('utf-8'),
                               "start_time": a.start,
                               "length": a.length,

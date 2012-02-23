@@ -140,6 +140,11 @@ phonetic_table.update({
     u"bya": u"b' a", u"byu": u"b' M", u"bye": u"b' e", u"byo": u"b' o",  # びゃびゅびぇびょ
     u"pya": u"p' a", u"pyu": u"p' M", u"pye": u"p' e", u"pyo": u"p' o",  # ぴゃぴゅぴぇぴょ
     u"tha": u"t' a", u"thi": u"t' i", u"thu": u"t' M", u"the": u"t' e", u"tho": u"t' o", # てゃてぃてゅてぇてょ
+    })
+
+#その他の歌詞が挿入された場合
+phonetic_table.update({
+    u"-": u"a", u"ー": u"a", u"−": u"a",  # 伸ばし棒 
     u"s": u"s", u"m": u"m"
     })
 
@@ -152,7 +157,11 @@ def lyric2phonetic(lyric):
     Returns:
         発音記号(unicode)
     """
-    return phonetic_table[lyric]
+    try:
+        phonetic = phonetic_table[lyric]
+    except KeyError:
+        phonetic = u"a"
+    return phonetic
 
 
 def phonetic2lyric(phonetic):
@@ -163,8 +172,11 @@ def phonetic2lyric(phonetic):
     Returns:
         歌詞（ひらがな）（unicode）
     """
-    return lyric_table[phonetic]
-
+    try:
+        lyric = lyric_table[phonetic]
+    except KeyError:
+        lyric = u"あ"
+    return lyric
 
 class FakeFile(object):
     """文字列アクセスをファイルアクセスのように動作させるクラス"""
