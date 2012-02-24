@@ -110,8 +110,6 @@ $(document).ready(function(){
         }]
     });
 
-
-
     var changeHighlight = function(obj){
         var index = $(obj).parent().find("input:checkbox").index(obj);
         if(index !== -1){
@@ -153,15 +151,6 @@ $(document).ready(function(){
         changeGraph();
     });
     $("select").change(function(){ selectRule($(this).children("option:selected")) });
-    //$(".chooseable").click(function(){
-        //var clickedCandidate = $("input:checkbox[value="+$(this).attr("id").slice(5)+"]")
-        //if(clickedCandidate.attr("checked") === "checked"){
-            //clickedCandidate.removeAttr("checked");
-        //} else {
-            //clickedCandidate.attr("checked", "checked");
-        //}
-        //clickedCandidate.change();
-    //});
 
     changeGraph();
     jQuery.getJSON("/appliedlyric", function(anote){
@@ -169,48 +158,33 @@ $(document).ready(function(){
         for (var i=0; i < anote.length; i++) {
             span = $("<span>").addClass("lyric").css({width: anote[i].length / 10 + "px"}).html(anote[i].lyric);
             div = $("<div>").addClass("anote").css({left: (anote[i].start_time - init_time) / 10 + $(".highcharts-series > path").offset().left + "px"});
-            if(anote[i].rules.length > 0){
-                if(anote[i].rules.length < 1){ //本来は===1とする。今はテストのため一つでもポップアップするように変更してある。
-                    span.click(function(rules){
-                        return function(){
-                            for(var i=0; i < rules.length; i++){
-                                var clickedCandidate = $("input:checkbox[value="+rules[i].id+"]");
-                                if(clickedCandidate.attr("checked") === "checked"){
-                                    clickedCandidate.removeAttr("checked");
-                                } else {
-                                    clickedCandidate.attr("checked", "checked");
-                                }
-                                clickedCandidate.change();
-                            }
-                        }
-                    }(anote[i].rules));
-                } else {
-                    var ul = $("<ul>").addClass("popup");
-                    for (var j=0; j < anote[i].rules.length; j++) {
-                        var li = $("<li>").click(function(rule){
-                            return function(){
-                                clickedCandidate = $("#rule-form input:checkbox[value="+rule+"]");
-                                if(clickedCandidate.attr("checked") === "checked"){
-                                    clickedCandidate.removeAttr("checked");
-                                } else {
-                                    clickedCandidate.attr("checked", "checked");
-                                }
-                                $(this).parent(".popup").toggle();
-                                console.log(this);
-                                clickedCandidate.change();
-                            };
-                        }(anote[i].rules[j].id)).text(anote[i].rules[j].name);
-                        ul.append(li);
-                    };
-                    span.click(function(){
-                        $(this).siblings("ul").toggle();
-                    });
-                    $(div).append(ul);
-                }
-                div.addClass("chooseable");
+            if(anote[i].rules.length === 1){ //本来は > 1とする。今はテストのため一つでもポップアップするように変更してある。
+                var ul = $("<ul>").addClass("popup");
                 for (var j=0; j < anote[i].rules.length; j++) {
-                    div.addClass("cand" + anote[i].rules[j].id);
+                    var li = $("<li>").click(function(rule){
+                        return function(){
+                            $("#rule-form input:checkbox[value="+rule+"]").click();
+                            $(this).parent(".popup").toggle();
+                        };
+                    }(anote[i].rules[j].id)).text(anote[i].rules[j].name);
+                    ul.append(li);
                 };
+                span.click(function(){
+                    $(this).siblings("ul").toggle();
+                });
+                $(div).append(ul);
+            } else if(anote[i].rules.length === 1){
+                span.click(function(rules){
+                    return function(){
+                        for(var i=0; i < rules.length; i++){
+                            $("input:checkbox[value="+rules[i].id+"]").click();
+                        }
+                    }
+                }(anote[i].rules));
+            }
+            div.addClass("chooseable");
+            for (var j=0; j < anote[i].rules.length; j++) {
+                div.addClass("cand" + anote[i].rules[j].id);
             }
             div.prepend(span);
             $("#float-lyric").append(div);
@@ -219,5 +193,4 @@ $(document).ready(function(){
         $("select > option:selected").each(function(){ selectRule(this)} );
         $("input:checkbox").each(function(){ changeHighlight(this)} );
     });
-
 });
