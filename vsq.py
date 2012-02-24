@@ -43,13 +43,13 @@ class VSQEditor(object):
 
         self.unapply_dict = {}
 
-        #トラックの始端時間（プリメジャータイムを除いた時間）を求める
+        #シーケンスの始端時間（プリメジャータイムを除いた時間）を求める
         pre_measure = int(self.normal_tracks[0].data['Master']['PreMeasure'])
         nn, dd, _, _ = self.master_track.beat
         time_div = self.header.data['time_div']
         self.start_time = int(nn / float(2 ** dd) * 4 * pre_measure * time_div)
 
-        #トラックの終端時間（最後のノートイベントの終端時間）を求める
+        #シーケンスの終端時間（最後のノートイベントの終端時間）を求める
         self.end_time = self.start_time
         for track in self.normal_tracks:
             et = track.anotes[-1].end
@@ -77,42 +77,14 @@ class VSQEditor(object):
         else:
             return binary
 
-    def get_lyrics(self):
-        """歌詞を取得する
-        Returns:
-            歌詞(string)
+    @property
+    def anotes(self):
+        """音符リストを取得する
+        Return:
+            音符リスト（AnoteList）（normaltrack.pyを参照）
         """
-        return self.current_track.lyrics
+        return self.current_track.anotes
 
-    def get_anotes(self, s=None, e=None):
-        """sからeまでの音符情報を取得する
-        Args:
-            s: 選択開始地点の時間
-            e: 選択終了地点の時間
-        sやeを指定しなければ、トラックの先頭と末尾の時間に置き換えられる
-
-        Returns:
-            Anoteインスタンスのリスト
-            Anoteクラスについては、normaltrack.pyを参照
-        """
-        if s is None:
-            s = self.start_time
-        if e is None:
-            e = self.end_time
-        anotes = self.current_track.anotes
-        return [a for a in anotes if s <= a.end and a.start <= e]
-
-    def get_anotes_f_lyric_i(self, s=None, e=None):
-        lyrics = self.get_lyrics()
-        if not s:
-            s = 0
-        if not e:
-            e = len(lyrics)
-        smallrxp = re.compile(u"[ぁぃぅぇぉゃゅょ]")
-
-        s_index = s - len(smallrxp.findall(lyrics[:s]))
-        e_index = e - len(smallrxp.findall(lyrics[:e]))
-        return self.current_track.anotes[s_index:e_index]
 
     def get_pitch_curve(self, s=None, e=None):
         """sからeまでのピッチ曲線を取得する
@@ -177,14 +149,6 @@ class VSQEditor(object):
                                         e,
                                         stretch)
 
-    def set_anote_length(self, anotes, length):
-        """音符の長さを変更する
-        Args:
-            anotes: 変更対象となる音符イベント（リスト）
-            length: 変更後の音符の長さ
-        """
-        for a in anotes:
-            a.length = length
 
     def select_track(self, n):
         """操作対象トラックを変更する
@@ -199,8 +163,7 @@ class VSQEditor(object):
         Args:
             rule_i: get_rule_candsメソッドによって得られたルール適用候補
         """
-        anotes = self.get_anotes_f_lyric_i(rule_i['s_index'],
-                                      rule_i['e_index'])
+        anotes = rule_i['anotes']
         for i, curve in enumerate(rule_i['rule']['dyn_curves']):
             self.set_dynamics_curve(curve['curve'],
                                 anotes[i].start,
@@ -221,7 +184,7 @@ class VSQEditor(object):
             return False
 
         rule_i = self.unapply_dict[rule_i['id']]
-        anotes = self.get_anotes_f_lyric_i(rule_i['s_index'], rule_i['e_index'])
+        anotes = rule_i['anotes']
         start_time = anotes[0].start
         end_time = anotes[-1].end
 
@@ -248,30 +211,15 @@ class VSQEditor(object):
         """
         rulerxp = re.compile(rule['regexp'])
         rules = []
-
-        def is_connected(anotes):
-            if len(anotes) <= 1:
-                return True
-            for i, a in enumerate(anotes[1:]):
-                if a.start - anotes[i].end > 50:
-                    return False
-            return True
-
-        def check_notes(notes, anotes):
-            if notes is None:
-                return True
-            relative_notes = [0] + [anote['note'] - anotes[i]['note']
-                for i, anote in enumerate(anotes[1:])]
-            return relative_notes == notes
-
         match_len = lambda x, y: (not x or not y) or len(x) == len(y)
-        lyrics = self.get_lyrics()
-        for i, match in enumerate(rulerxp.finditer(lyrics)):
+
+        for i, match in enumerate(rulerxp.finditer(self.anotes.lyrics)):
             s = match.start()
             e = match.end()
-            match_anotes = self.get_anotes_f_lyric_i(s, e)
+            match_anotes = self.anotes.filter(lyric_start=s, lyric_end=e)
+
             #各ノートが接続されているか
-            if rule['connect'] and not is_connected(match_anotes):
+            if rule['connect'] and len(match_anotes.split()) != 1:
                 continue
             #ノートの数と各ノートに割り当てられるカーブの数が一致するか
             if (not match_len(rule['dyn_curves'], match_anotes) or
@@ -279,8 +227,9 @@ class VSQEditor(object):
                 continue
             #音階の変化が一致するか
             if (rule['relative_notes'] and
-                not check_notes(rule['relative_notes'], match_anotes)):
+                rule['relative_notes'] !=  match_anotes.relative_notes):
                 continue
+
             else:
                 rule_i = {"id": rule['rule_id'] + 'I' + str(i),
                         "rule": rule,
@@ -293,8 +242,8 @@ class VSQEditor(object):
                 u_pit = self.get_pitch_curve(
                         match_anotes[0].start,
                         match_anotes[-1].end + match_anotes[-1].length)
-                un_rule_i = {"s_index": s,
-                        "e_index": e,
+                un_rule_i = {
+                        "anotes": match_anotes,
                         "undyn": u_dyn,
                         "unpit": u_pit}
                 if not rule_i['id'] in self.unapply_dict:
@@ -346,39 +295,28 @@ class VSQEditor(object):
             note: Anoteクラスの音符イベント
             force: 前後のノートを削って挿入するかしないか
         """
-        anotes = self.current_track.anotes
-        s = note.start
-        e = note.end
-        note.set_identifier("target")
+        anotes = self.anotes
+        conflict = lambda prev, next: max(0, prev.end - next.start)
 
         # ノートの追加, ソート
         anotes.append(note)
-        anotes.sort(key=lambda x: int(x.start))
-        
-        for i, anote in enumerate(anotes):
-            if anote.identifier:
-                prev = i - 1 if 0 < i else -1
-                target = i
-                next = i + 1 if not i >= len(anotes) - 1 else -1
-                anotes[target].identifier = None
-                break
+        target = anotes.index(note)
+        prev = target - 1
+        next = target + 1
+
         if force:               # 前後のノートを削って挿入
-            if s < anotes[prev].end and not prev == -1:
-                self.end_time -= anotes[prev].end - s
-                anotes[prev].length -= anotes[prev].end - s
-            if anotes[next].start < e and not next == -1:
-                self.end_time -= anotes[next].start - e
-                anotes[next].length -= e - anotes[next].start
-                anotes[next].start = e
+            if prev >= 0:
+                anotes[prev].length -= conflict(anotes[prev], note)
+            if next < len(anotes):
+                anotes[next].length -= conflict(note, anotes[next])
+                anotes[next].start += conflict(note, anotes[next])
         else:                   # 指定したノートを削って挿入
-            if s < anotes[prev].end and not prev == -1:
-                self.end_time -= anotes[prev].end - s
-                anotes[target].length -= anotes[prev].end - s
-                anotes[target].start = anotes[prev].end
-            if anotes[next].start < e and not next == -1:
-                self.end_time -= e - anotes[next].start
-                anotes[target].length -= anotes[next].start - e
-        self.end_time += note.length
+            if prev >= 0:
+                anotes[target].length -= conflict(anotes[prev], note)
+                anotes[target].start += conflict(anotes[prev], note)
+            if next < len(anotes):
+                anotes[target].length -= conflict(note, anotes[next])
+        self.end_time = max(anotes[-1].end, self.end_time)
 
 
 '''
@@ -394,15 +332,15 @@ class VSQEditor(object):
 8.新しいノートを挿入する
 '''
 if __name__ == '__main__':
-    #editor = VSQEditor(binary=open('test.vsq', 'r').read())
+    editor = VSQEditor(binary=open('test.vsq', 'r').read())
     #enable = [8]
-    editor = VSQEditor(binary=open('thyla.vsq', 'r').read())
-    enable = [3, 8]
+    #editor = VSQEditor(binary=open('thyla.vsq', 'r').read())
+    enable = [1,2,3,4,5,6,7,8]
 
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable:
         print "anotes:"
-        anotes = editor.get_anotes(6800, 7100)
+        anotes = editor.anotes.filter(6800, 7100)
         pp(anotes)
         print "\ndynamics:"
         pp(editor.get_dynamics_curve(6800, 7100))
@@ -419,15 +357,12 @@ if __name__ == '__main__':
     #4.歌詞を表示
     if 4 in enable:
         print "\nlyrics:"
-        print editor.get_lyrics()
+        print editor.anotes.lyrics
 
     #5.相対音階を表示（前のノートとの差をとる）
     if 5 in enable:
         print "\nrelative_notes:"
-        anotes = editor.get_anotes()
-        relative_notes = [0] + [anote['note'] - anotes[i]['note']
-                                    for i, anote in enumerate(anotes[1:])]
-        print relative_notes
+        print editor.anotes.relative_notes
 
     #6.ルール適用テスト
     if 6 in enable:
@@ -445,10 +380,10 @@ if __name__ == '__main__':
 
     #ノート挿入テスト(Anoteクラス実装後版)
     if 8 in enable:
-        anotes = editor.current_track.anotes
+        anotes = editor.anotes
         print editor.end_time
         note = {
-            "time": 136320,
+            "time": 32320,
             "note": 64,
             "lyric": u"てゅ",
             "length": 120,
