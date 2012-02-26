@@ -93,7 +93,7 @@ port_rule = {"rule_id":"R3",
         "dyn_curves":[],
         "pit_curves":[]}
         
-n_accent_rule = {"rule_id":"R4",
+naccent_rule = {"rule_id":"R4",
 		"name":"んのアクセントを0にする",
 		"connect":False,
 		"regexp":u"ん",
