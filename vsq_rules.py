@@ -91,6 +91,98 @@ zuii_rule = {"rule_id": "R1",
         "dyn_curves": zuii_dyn_curves,
         "pit_curves": zuii_pit_curves}
 
+my_dyn_curves = [curve(range(60, 40, -1))]
+
+my_rule = {"rule_id": "R2",
+        "name": "んのdynを下げる",
+        "connect": False,
+        "regexp": u"ん",
+        "relative_notes": None,
+        "dyn_curves": my_dyn_curves,
+        "pit_curves": []}
+
+my2_dyn_curves = [lowpass(0, 100, 0.8), curve(range(80, 70, -1))]
+
+my2_rule = {"rule_id": "R3",
+        "name": "ばのdynを下げる",
+        "connect": False,
+        "regexp": u".ば",
+        "relative_notes": None,
+        "dyn_curves": my2_dyn_curves,
+        "pit_curves": []}
+
+my3_rule = {"rule_id": "R4",
+        "name": "びのdynを下げる",
+        "connect": False,
+        "regexp": u".び",
+        "relative_notes": None,
+        "dyn_curves": my2_dyn_curves,
+        "pit_curves": []}
+
+my4_rule = {"rule_id": "R5",
+        "name": "ぶのdynを下げる",
+        "connect": False,
+        "regexp": u".ぶ",
+        "relative_notes": None,
+        "dyn_curves": my2_dyn_curves,
+        "pit_curves": []}
+
+my5_rule = {"rule_id": "R6",
+        "name": "べのdynを下げる",
+        "connect": False,
+        "regexp": u".べ",
+        "relative_notes": None,
+        "dyn_curves": my2_dyn_curves,
+        "pit_curves": []}
+
+my6_rule = {"rule_id": "R7",
+        "name": "ぼのdynを下げる",
+        "connect": False,
+        "regexp": u".ぼ",
+        "relative_notes": None,
+        "dyn_curves": my2_dyn_curves,
+        "pit_curves": []}
+
+my7_rule = {"rule_id": "R8",
+        "name": "ぱのdynを下げる",
+        "connect": False,
+        "regexp": u".ぱ",
+        "relative_notes": None,
+        "dyn_curves": my2_dyn_curves,
+        "pit_curves": []}
+
+my8_rule = {"rule_id": "R9",
+        "name": "ぴのdynを下げる",
+        "connect": False,
+        "regexp": u".ぴ",
+        "relative_notes": None,
+        "dyn_curves": my2_dyn_curves,
+        "pit_curves": []}
+
+my9_rule = {"rule_id": "R10",
+        "name": "ぷのdynを下げる",
+        "connect": False,
+        "regexp": u".ぷ",
+        "relative_notes": None,
+        "dyn_curves": my2_dyn_curves,
+        "pit_curves": []}
+
+my10_rule = {"rule_id": "R11",
+        "name": "ぺのdynを下げる",
+        "connect": False,
+        "regexp": u".ぺ",
+        "relative_notes": None,
+        "dyn_curves": my2_dyn_curves,
+        "pit_curves": []}
+
+my11_rule = {"rule_id": "R12",
+        "name": "ぽのdynを下げる",
+        "connect": False,
+        "regexp": u".ぽ",
+        "relative_notes": None,
+        "dyn_curves": my2_dyn_curves,
+        "pit_curves": []}
+
 class Rule(object):
     def __init__(self):
         pass

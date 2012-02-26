@@ -25,7 +25,7 @@ class ParserPage(webapp.RequestHandler):
         file_name = self.request.body_file.vars['file'].filename
         editor = VSQEditor(binary = data)
         lyrics = editor.get_lyrics()
-        rules = [zuii_rule, san_rule]
+        rules = [zuii_rule, san_rule, my_rule, my2_rule, my3_rule, my4_rule, my5_rule, my6_rule, my7_rule, my8_rule, my9_rule, my10_rule, my11_rule]
         output_rules = []
 
 
@@ -60,6 +60,17 @@ class AppliedLyricJSON(webapp.RequestHandler):
         editor = memcache.get("vsq_editor")
         candidates = editor.get_rule_cands(zuii_rule)
         candidates.extend(editor.get_rule_cands(san_rule))
+        candidates.extend(editor.get_rule_cands(my_rule))
+        candidates.extend(editor.get_rule_cands(my2_rule))
+        candidates.extend(editor.get_rule_cands(my3_rule))
+        candidates.extend(editor.get_rule_cands(my4_rule))
+        candidates.extend(editor.get_rule_cands(my5_rule))
+        candidates.extend(editor.get_rule_cands(my6_rule))
+        candidates.extend(editor.get_rule_cands(my7_rule))
+        candidates.extend(editor.get_rule_cands(my8_rule))
+        candidates.extend(editor.get_rule_cands(my9_rule))
+        candidates.extend(editor.get_rule_cands(my10_rule))
+        candidates.extend(editor.get_rule_cands(my11_rule))
         anotes = editor.get_anotes();
         anote_list = []
         for a in anotes:
@@ -81,6 +92,17 @@ class AppliedVsqJSON(webapp.RequestHandler):
         file_name = memcache.get("vsq_name")
         candidates = editor.get_rule_cands(zuii_rule)
         candidates.extend(editor.get_rule_cands(san_rule))
+        candidates.extend(editor.get_rule_cands(my_rule))
+        candidates.extend(editor.get_rule_cands(my2_rule))
+        candidates.extend(editor.get_rule_cands(my3_rule))
+        candidates.extend(editor.get_rule_cands(my4_rule))
+        candidates.extend(editor.get_rule_cands(my5_rule))
+        candidates.extend(editor.get_rule_cands(my6_rule))
+        candidates.extend(editor.get_rule_cands(my7_rule))
+        candidates.extend(editor.get_rule_cands(my8_rule))
+        candidates.extend(editor.get_rule_cands(my9_rule))
+        candidates.extend(editor.get_rule_cands(my10_rule))
+        candidates.extend(editor.get_rule_cands(my11_rule))
         select_ids = self.request.get_all("rule")
 
         logging.info(str(candidates))
