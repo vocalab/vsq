@@ -274,6 +274,58 @@ class AnoteList(list):
 
         return AnoteList(temp)
 
+    def filter2(self, formula):
+        """lispとかによくあるフィルター
+        Args:
+            formula:
+                条件判定用のラムダ式
+                この式は AnoteList 中の各 Anote に適応される
+        Returns:
+            該当する Anote を格納した AnoteList
+            インスタンスは一緒
+
+        Examples:
+            anotes = AnoteList([
+                         Anote(10, 64, u"あ"),
+                         Anote(20, 64, u"い"),
+                         Anote(30, 64, u"う")
+                     ])
+            anotes.filter2(lambda x: x.start <= 20)
+            # => AnoteList([
+            #        Anote(10, 64, u"あ"),
+            #        Anote(20, 64, u"い")
+            #    ])
+        """
+        ret = []
+        for i in self:
+            if formula(i):
+                ret.append(i)
+        return AnoteList(ret)
+
+    def map(self, formula):
+        """lispとかによくあるマップ
+        Args:
+            formula:
+                条件判定用のラムダ式
+        Returns:
+            self
+        Examples:
+            anotes = AnoteList([
+                         Anote(10, 64, u"あ", 100),
+                         Anote(20, 64, u"い", 100),
+                         Anote(30, 64, u"う", 100)
+                     ])
+            anotes.map(lambda x: x.set_length(120))
+            # => AnoteList([
+            #        Anote(10, 64, u"あ", 120),
+            #        Anote(20, 64, u"い", 120),
+            #        Anote(30, 64, u"う", 120)
+            #    ])
+        """
+        for i in self:
+            formula(i)
+        return self
+
     def lyric_index(self, anote):
         """歌詞文字列上のインデックスを取得する
         Args:
@@ -339,13 +391,18 @@ if __name__ == '__main__':
     anote3 = Anote(2000, 100, u"や")
     anote4 = Anote(5000, 100, u"お")
     anote5 = Anote(120, 90, u"い")
+
     anotes.extend([anote1, anote1, anote2, anote3])
     anotes.append(anote4)
     anotes.append(anote5)
-    print anotes.phonetics
-    print anotes.lyrics
+    #print anotes.phonetics
+    #print anotes.lyrics
     i = anotes.lyric_index(anote2)
-    print i, anotes.lyrics[i]
-    print anotes.split()[0].split()
-    print anotes.filter(lyric_end=5)
+    #print i, anotes.lyrics[i]
+    #print anotes.split()[0].split()
+    #print anotes.filter(lyric_end=5)
+    #print anotes
+    print anotes.filter2(lambda x: x.start < 1000), "\n"
+    print anotes.filter2(lambda x: x.start < 1000).lyrics, "\n"
+    print anotes.map(lambda x: x.set_length(x.get_length() + 10)), "\n"
     print anotes
