@@ -118,10 +118,12 @@ phonetic_table.update({
     u"ya": u"j a", u"yu": u"j M", u"ye": u"j e", u"yo": u"j o",  # や行
     u"ra": u"4 a", u"ri": u"4' i", u"ru": u"4 M", u"re": u"4 e", u"ro": u"4 o",  # ら行
     u"wa": u"w a", u"wi": u"w i", u"we": u"w e", u"wo": u"w o",  # わ行
-    u"la": "h\ a", u"xa": u"h\ a", u"li": u"h\ i", u"xi": u"h\ i", u"lu": u"h\ M", u"xu": u"h\ M", u"le": u"h\ e", u"xe": u"h\ e", u"lo": u"h\ o", u"xo": u"h\ o",  # ぁぃぅぇぉ
+    u"la": "h\ a", u"li": u"h\ i", u"lu": u"h\ M", u"le": u"h\ e", u"lo": u"h\ o", # ぁぃぅぇぉ(la...)
+    u"xa": u"h\ a", u"xi": u"h\ i", u"xu": u"h\ M", u"xe": u"h\ e", u"xo": u"h\ o",  # ぁぃぅぇぉ(xa...)
     u"kya": u"k' a", u"kyu": u"k' M", u"kyo": u"k' o",  # きゃきゅきょ
     u"sha": u"S a", u"sya": u"S a", u"shu": u"S M", u"syu": u"S M", u"she": u"tS e", u"sye": u"tS e", u"sho": u"S o", u"syo": u"S o",  # しゃしゅしぇしょ
-    u"cha": u"tS a", u"cya": u"tS a", u"tya": u"tS a", u"tsi": u"ts i", u"chu": u"tS M", u"cyu": u"tS M", u"che": u"tS e", u"tye": u"tS e", u"tyo": u"tS o", u"cho": u"tS o",  # ちゃつぃちゅちぇちょ
+    u"cha": u"tS a", u"cya": u"tS a", u"tya": u"tS a", u"chu": u"tS M", u"cyu": u"tS M", u"che": u"tS e", u"tye": u"tS e", u"tyo": u"tS o", u"cho": u"tS o",  # ちゃちゅちぇちょ
+    u"tsa": u"ts a", u"tsi": u"ts i", u"tse": u"ts e", u"tso": u"ts o", # つぁつぃつぇつぉ
     u"nya": u"J a", u"nyu": u"J M", u"nye": u"J e", u"nyo": u"J o",  # にゃにゅにぇにょ
     u"hya": u"C a", u"hyu": u"C M", u"hye": u"C e", u"hyo": u"C o",  # ひゃひゅひぇひょ
     u"fa": u"p\ a", u"fi": u"p\' i", u"fyu": u"p\' M", u"fe": u"p\ e", u"fo": u"p\ o",  # ふぁふぃふゅふぇふぉ
