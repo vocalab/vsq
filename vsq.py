@@ -174,6 +174,8 @@ class VSQEditor(object):
                                 anotes[i].start,
                                 anotes[i].end,
                                 curve['stretch'])
+        anotes[0].options['PMbPortamentoUse'] = rule_i['rule']['portamento']
+        anotes[0].options['DEMaccent'] = rule_i['rule']['accent']
 
     def unapply_rule(self, rule_i):
         """ルールの適用をもとに戻す
@@ -396,3 +398,13 @@ if __name__ == '__main__':
     #3.編集結果をunparseして書きこむ
     if 3 in enable:
         editor.unparse('out.vsq')
+    
+    #9.ポルタメントを表示する（仮）
+    if 9 in enable:
+    	i = 0
+    	porta = []
+    	anotes = editor.get_anotes()
+    	while i<=107:
+    		i = i+1
+    		porta.append(anotes[i].options['PMbPortamentoUse']);
+		print porta

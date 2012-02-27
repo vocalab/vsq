@@ -40,6 +40,20 @@ pit_curves:
     マッチした部分にルールを適用する際の、適用後
     カーブを格納する。regexpのモーラ数分用意する
     必要がある。
+    
+portamento:
+    マッチした部分の始めの文字に指定した値によってポルタメントを付加する。
+	ポルタメントの値はデフォルトで０（つまり付加しない状態）。
+	上行形でポルタメントを付加にチェックを入れたい場合は値に1を、
+	下行形でポルタメントを付加にチェックを入れたい場合は値に2を、
+	チェックを外したい場合には０を、
+	何も変更したくない場合はNoneを記載する。
+	
+accent:
+	マッチした部分の始めの文字のアクセントを変更する。
+	入力する値は適応したい数値を入れる。
+	何も変更したくない場合はNoneを記載する。
+		
 """
 
 
@@ -64,32 +78,53 @@ def lowpass(l_value, h_value, ratio, stretch=None):
     c += [l_value for v in range(1000 - 100 - p)]
     return curve(c, stretch)
 
+dyn_curves = [linear(0,100),
+              curve(range(30,0,-1)+range(0,100)),
+              linear(100,0)]
 
-dyn_curves = [linear(0, 100),
-              curve(range(30, 0, -1) + range(0, 100)),
-              linear(100, 0)]
+san_rule = {"rule_id":"R0",
+        "name":"さんの前のdynを下げる",
+        "regexp":u".さn",
+        "connect":True,
+        "relative_notes":None,
+        "dyn_curves":dyn_curves,
+        "pit_curves":[],
+        "portamento":None,
+        "accent":None}
+
+zuii_dyn_curves = [lowpass(0,100,0.8)]
+zuii_pit_curves = [lowpass(-10000,0,0.8)]
 
 
-san_rule = {"rule_id": "R0",
-        "name": "さんの前のdynを下げる",
-        "regexp": u".さn",
-        "connect": True,
-        "relative_notes": None,
-        "dyn_curves": dyn_curves,
-        "pit_curves": []}
+zuii_rule = {"rule_id":"R1",
+        "name":"ずぃの最後を下げる",
+        "connect":False,
+        "regexp":u"ずぃ",
+        "relative_notes":None,
+        "dyn_curves":zuii_dyn_curves,
+        "pit_curves":zuii_pit_curves,
+        "portamento":None,
+        "accent":None}
 
-
-zuii_dyn_curves = [lowpass(0, 100, 0.8)]
-zuii_pit_curves = [lowpass(-10000, 0, 0.8)]
-
-
-zuii_rule = {"rule_id": "R1",
-        "name": "ずぃの最後を下げる",
-        "connect": False,
-        "regexp": u"ずぃ",
-        "relative_notes": None,
-        "dyn_curves": zuii_dyn_curves,
-        "pit_curves": zuii_pit_curves}
+port_rule = {"rule_id":"R3",
+        "name":"ああにポルタメントを付加する",
+        "connect":True,
+        "regexp":u"ああ",
+        "relative_notes":None,
+        "portamento":2,
+        "accent":None,
+        "dyn_curves":[],
+        "pit_curves":[]}
+        
+n_accent_rule = {"rule_id":"R4",
+		"name":"んのアクセントを0にする",
+		"connect":False,
+		"regexp":u"ん",
+		"relative_notes":None,
+		"portamento":None,
+		"accent":0,
+		"dyn_curves":[],
+		"pit_curves":[]}
 
 class Rule(object):
     def __init__(self):

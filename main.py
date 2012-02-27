@@ -25,13 +25,13 @@ class ParserPage(webapp.RequestHandler):
         file_name = self.request.body_file.vars['file'].filename
         editor = VSQEditor(binary = data)
         lyrics = editor.anotes.lyrics
-        rules = [zuii_rule, san_rule]
+        rules = [zuii_rule, san_rule, port_rule, n_accent_rule]
         output_rules = []
 
 
         for r in rules:
             before_index = 0
-            candidate_keys = []
+            candidate_keys = []          
             candidates = editor.get_rule_cands(r)
             output_lyric = ""
             for value in sorted(candidates, key=lambda x:x["s_index"]):
@@ -80,6 +80,8 @@ class AppliedVsqJSON(webapp.RequestHandler):
         file_name = memcache.get("vsq_name")
         candidates = editor.get_rule_cands(zuii_rule)
         candidates.extend(editor.get_rule_cands(san_rule))
+        candidates.extend(editor.get_rule_cands(port_rule))
+        candidates.extend(editor.get_rule_cands(n_accent_rule))      
         select_ids = self.request.get_all("rule")
 
         logging.info(str(candidates))
