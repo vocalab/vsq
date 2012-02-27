@@ -305,7 +305,7 @@ class VSQEditor(object):
 '''
 if __name__ == '__main__':
     editor = VSQEditor(binary=open('test.vsq', 'r').read())
-    enable = [5]
+    enable = [6]
     
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable: 
@@ -352,6 +352,7 @@ if __name__ == '__main__':
             editor.unapply_rule(rule_i)
         print "\nunapplyed"
         print editor.get_dynamics_curve(20600,21000)
+        print rule_cands.values()
 
     #ノート挿入テスト(Anoteクラス実装後版)
     if 8 in enable:
