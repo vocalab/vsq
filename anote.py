@@ -278,7 +278,8 @@ class AnoteList(list):
         return AnoteList(filter(formula, self))
 
     def map(self, formula):
-        return AnoteList(map(formula, self))
+        map(formula, self)
+        return self
 
     def lyric_index(self, anote):
         """歌詞文字列上のインデックスを取得する
@@ -356,7 +357,7 @@ if __name__ == '__main__':
     #print anotes.split()[0].split()
     #print anotes.filter(lyric_end=5)
     #print anotes
-    print anotes.filter2(lambda x: x.start < 1000), "\n"
-    print anotes.filter2(lambda x: x.start < 1000).lyrics, "\n"
+    #print anotes.filter2(lambda x: x.start < 1000), "\n"
+    #print anotes.filter2(lambda x: x.start < 1000).lyrics, "\n"
     print anotes.map(lambda x: x.set_length(x.get_length() + 10)), "\n"
     print anotes
