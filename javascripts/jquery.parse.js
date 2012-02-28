@@ -9,6 +9,13 @@ $(document).ready(function(){
         title: {
             text: "dynamics curve"
         },
+		xAxis: {
+			events: {
+				setExtremes: function(e) {
+					$('#report').html('<b>Set extremes:</b>'+e.min+', '+e.max);
+				}
+			}
+		},
         yAxis: {
         	title: {
         		text: 'dynamics'

@@ -22,23 +22,22 @@
     <header>
       <h1>Vocalab</h1>
     </header>
+		<div id="report" style="font: 0.8em sans-serif"></div>
     <form id="rule-form" action="/download" method="post">
-      {% for r in rules %}
       <div class="cand-inputs">
-        {% for key in r.keys %}
-        <input type="checkbox" name="rule" value="{{ key }}" style="display: none"/>
+				{% for id in cand_ids %}
+        <input type="checkbox" name="rule" value="{{ id }}" style="display: none"/>
         {% endfor %}
       </div>
-      {% endfor %}
       <input type="submit" value="ダウンロード">
     </form>
     <form action="">
       <select name="select_rule">
       {% for r in rules %}
         {% ifequal forloop.counter0 0 %}
-        <option selected="selected" value="{{ r.key }}">{{ r.name }}</option>
+        <option selected="selected" value="{{ r.rule_id }}">{{ r.name }}</option>
         {% else %}
-        <option value="{{ r.key }}"/>{{ r.name }}</option>
+        <option value="{{ r.rule_id }}"/>{{ r.name }}</option>
         {% endifequal %}
       {% endfor %}
       </select>

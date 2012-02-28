@@ -326,6 +326,9 @@ class AnoteList(list):
             formula(i)
         return self
 
+    def filter3(self, formula):
+        return AnoteList(filter(formula, self))
+
     def lyric_index(self, anote):
         """歌詞文字列上のインデックスを取得する
         Args:
