@@ -275,59 +275,10 @@ class AnoteList(list):
         return AnoteList(temp)
 
     def filter2(self, formula):
-        """lispとかによくあるフィルター
-        Args:
-            formula:
-                条件判定用のラムダ式
-                この式は AnoteList 中の各 Anote に適応される
-        Returns:
-            該当する Anote を格納した AnoteList
-            インスタンスは一緒
-
-        Examples:
-            anotes = AnoteList([
-                         Anote(10, 64, u"あ"),
-                         Anote(20, 64, u"い"),
-                         Anote(30, 64, u"う")
-                     ])
-            anotes.filter2(lambda x: x.start <= 20)
-            # => AnoteList([
-            #        Anote(10, 64, u"あ"),
-            #        Anote(20, 64, u"い")
-            #    ])
-        """
-        ret = []
-        for i in self:
-            if formula(i):
-                ret.append(i)
-        return AnoteList(ret)
+        return AnoteList(filter(formula, self))
 
     def map(self, formula):
-        """lispとかによくあるマップ
-        Args:
-            formula:
-                条件判定用のラムダ式
-        Returns:
-            self
-        Examples:
-            anotes = AnoteList([
-                         Anote(10, 64, u"あ", 100),
-                         Anote(20, 64, u"い", 100),
-                         Anote(30, 64, u"う", 100)
-                     ])
-            anotes.map(lambda x: x.set_length(120))
-            # => AnoteList([
-            #        Anote(10, 64, u"あ", 120),
-            #        Anote(20, 64, u"い", 120),
-            #        Anote(30, 64, u"う", 120)
-            #    ])
-        """
-        for i in self:
-            formula(i)
-        return self
-
-    def filter3(self, formula):
-        return AnoteList(filter(formula, self))
+        return map(formula, self)
 
     def lyric_index(self, anote):
         """歌詞文字列上のインデックスを取得する
