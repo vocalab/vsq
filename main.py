@@ -28,7 +28,7 @@ class ParserPage(webapp.RequestHandler):
 
         cand_ids = [c['id'] for c in editor.get_rule_cands(*rules)]
         memcache.set_multi(
-                {"editor": editor, "name": file_name, "rules": "a" },
+                {"editor": editor, "name": file_name},
                 key_prefix="vsq_",
                 time=3600
                 )
