@@ -278,7 +278,7 @@ class AnoteList(list):
         return AnoteList(filter(formula, self))
 
     def map(self, formula):
-        return map(formula, self)
+        return AnoteList(map(formula, self))
 
     def lyric_index(self, anote):
         """歌詞文字列上のインデックスを取得する
