@@ -174,8 +174,8 @@ class VSQEditor(object):
                                 anotes[i].start,
                                 anotes[i].end,
                                 curve['stretch'])
-        anotes[0].options['PMbPortamentoUse'] = rule_i['rule']['portamento']
-        anotes[0].options['DEMaccent'] = rule_i['rule']['accent']
+        anotes[0].prop['PMbPortamentoUse'] = rule_i['rule']['portamento']
+        anotes[0].prop['DEMaccent'] = rule_i['rule']['accent']
 
     def unapply_rule(self, rule_i):
         """ルールの適用をもとに戻す
