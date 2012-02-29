@@ -80,7 +80,7 @@ class VSQEditor(object):
     @property
     def anotes(self):
         """音符リストを取得する
-        Return:
+        Returns:
             音符リスト（AnoteList）（normaltrack.pyを参照）
         """
         return self.current_track.anotes
@@ -174,6 +174,8 @@ class VSQEditor(object):
                                 anotes[i].start,
                                 anotes[i].end,
                                 curve['stretch'])
+        anotes[0].prop['PMbPortamentoUse'] = rule_i['rule']['portamento']
+        anotes[0].prop['DEMaccent'] = rule_i['rule']['accent']
 
     def unapply_rule(self, rule_i):
         """ルールの適用をもとに戻す
@@ -200,57 +202,59 @@ class VSQEditor(object):
         pitch_list.sort()
         return True
 
-    def get_rule_cands(self, rule):
+    def get_rule_cands(self, *rules):
         """ルール適用候補を取得する
         Arge:
-            rule: ディクショナリとして格納されたルール定義（vsq_rules.pyを参照）
+            rules: ディクショナリとして格納されたルール定義（vsq_rules.pyを参照）
+            複数でもOK
 
         Returns:
             ルール適用候補（リスト）
         ルール適用候補のキーには重複しないIDが振られている
         """
-        rulerxp = re.compile(rule['regexp'])
-        rules = []
-        match_len = lambda x, y: (not x or not y) or len(x) == len(y)
+        cands = []
+        for rule in rules:
+            rulerxp = re.compile(rule['regexp'])
+            match_len = lambda x, y: (not x or not y) or len(x) == len(y)
 
-        for i, match in enumerate(rulerxp.finditer(self.anotes.lyrics)):
-            s = match.start()
-            e = match.end()
-            match_anotes = self.anotes.filter(lyric_start=s, lyric_end=e)
+            for i, match in enumerate(rulerxp.finditer(self.anotes.lyrics)):
+                s = match.start()
+                e = match.end()
+                match_anotes = self.anotes.filter(lyric_start=s, lyric_end=e)
 
-            #各ノートが接続されているか
-            if rule['connect'] and len(match_anotes.split()) != 1:
-                continue
-            #ノートの数と各ノートに割り当てられるカーブの数が一致するか
-            if (not match_len(rule['dyn_curves'], match_anotes) or
-                not match_len(rule['pit_curves'], match_anotes)):
-                continue
-            #音階の変化が一致するか
-            if (rule['relative_notes'] and
-                rule['relative_notes'] !=  match_anotes.relative_notes):
-                continue
+                #各ノートが接続されているか
+                if rule['connect'] and len(match_anotes.split()) != 1:
+                    continue
+                #ノートの数と各ノートに割り当てられるカーブの数が一致するか
+                if (not match_len(rule['dyn_curves'], match_anotes) or
+                    not match_len(rule['pit_curves'], match_anotes)):
+                    continue
+                #音階の変化が一致するか
+                if (rule['relative_notes'] and
+                    rule['relative_notes'] !=  match_anotes.relative_notes):
+                    continue
 
-            else:
-                rule_i = {"id": rule['rule_id'] + 'I' + str(i),
-                        "rule": rule,
-                        "anotes": match_anotes,
-                        "s_index": s,
-                        "e_index": e}
-                u_dyn = self.get_dynamics_curve(
-                        match_anotes[0].start,
-                        match_anotes[-1].end)
-                u_pit = self.get_pitch_curve(
-                        match_anotes[0].start,
-                        match_anotes[-1].end + match_anotes[-1].length)
-                un_rule_i = {
-                        "anotes": match_anotes,
-                        "undyn": u_dyn,
-                        "unpit": u_pit}
-                if not rule_i['id'] in self.unapply_dict:
-                    self.unapply_dict[rule_i['id']] = un_rule_i
-                rules.append(rule_i)
+                else:
+                    rule_i = {"id": rule['rule_id'] + 'I' + str(i),
+                            "rule": rule,
+                            "anotes": match_anotes,
+                            "s_index": s,
+                            "e_index": e}
+                    u_dyn = self.get_dynamics_curve(
+                            match_anotes[0].start,
+                            match_anotes[-1].end)
+                    u_pit = self.get_pitch_curve(
+                            match_anotes[0].start,
+                            match_anotes[-1].end + match_anotes[-1].length)
+                    un_rule_i = {
+                            "anotes": match_anotes,
+                            "undyn": u_dyn,
+                            "unpit": u_pit}
+                    if not rule_i['id'] in self.unapply_dict:
+                        self.unapply_dict[rule_i['id']] = un_rule_i
+                    cands.append(rule_i)
 
-        return rules
+        return cands
 
     def __set_param_curve(self, ptype, curve, s, e, stretch):
         if s == None or s <= self.start_time:
@@ -396,3 +400,13 @@ if __name__ == '__main__':
     #3.編集結果をunparseして書きこむ
     if 3 in enable:
         editor.unparse('out.vsq')
+    
+    #9.ポルタメントを表示する（仮）
+    if 9 in enable:
+    	i = 0
+    	porta = []
+    	anotes = editor.get_anotes()
+    	while i<=107:
+    		i = i+1
+    		porta.append(anotes[i].options['PMbPortamentoUse']);
+		print porta

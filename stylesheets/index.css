@@ -1,42 +1,49 @@
 @charset "utf-8";
 @import "reset.css";
 html{
-	height:100%;
+  height:100%;
 }
 body{
-	height: 600px;
-	font-family: Verdana, Helvetica, sans-serif;
-	background: url("../images/chrysant.jpg");
-	background-repeat:no-repeat;
-	background-position:100% 100%; 
-	background-attachment: fixed; 
-	background-color:white;
+  height: 600px;
+  font-family: Verdana, Helvetica, sans-serif;
+  background: url("../images/chrysant.jpg");
+  background-repeat:no-repeat;
+  background-position:100% 100%; 
+  background-attachment: fixed; 
+  background-color:white;
 }
-#wrapper{
-	height:100%;
+#wrapper {
+  height:100%;
 }
 div#header {
-	background: black;
-	margin:0 0 20px 0;
+  height: 50px;
+  background: black;
+  margin:0 0 20px 0;
+}
+#header h1 {
+  font-size: 23px;
+  line-height: 50px;
+  vertical-align: middle;
+  padding-left: 10px;
 }
 
 #content {
-	font-size:small;
-	text-align:center;
-	width:100%;
-	height:100%;
+  font-size:small;
+  text-align:center;
+  width:100%;
+  height:100%;
 }
 #content_image{
-	margin-left: auto;
-	margin-right: auto;
-	margin:0 0 20px 0;
+  margin-left: auto;
+  margin-right: auto;
+  margin:0 0 20px 0;
 }
 #content_form{
 }
 #content_explanation{
 }
 h1{
-	margin:auto;
-	font-size:20px;
-	color:white;
+  margin:auto;
+  font-size:20px;
+  color:white;
 }

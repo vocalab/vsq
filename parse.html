@@ -20,33 +20,29 @@
   </head>
   <body>
     <header>
-      <h1>Vocalab</h1>
+      <h1>Vocalab VSQ File Converter</h1>
     </header>
-    <div id="main">
-      <form id="rule-form" action="/download" method="post">
-        {% for r in rules %}
-        <div class="cand-inputs">
-          {% for key in r.keys %}
-          <input type="checkbox" name="rule" value="{{ key }}" style="display: none"/>
-          {% endfor %}
-        </div>
+    <form id="rule-form" action="/download" method="post">
+      <div class="cand-inputs">
+        {% for id in cand_ids %}
+        <input type="checkbox" name="rule" value="{{ id }}" style="display: none"/>
         {% endfor %}
-        <input type="submit" value="ダウンロード">
-      </form>
-      <form action="">
-        <select name="select_rule">
-        {% for r in rules %}
-          {% ifequal forloop.counter0 0 %}
-          <option selected="selected" value="{{ r.key }}">{{ r.name }}</option>
-          {% else %}
-          <option value="{{ r.key }}"/>{{ r.name }}</option>
-          {% endifequal %}
-        {% endfor %}
-        </select>
-      </form>
-      <div id="dynchart" style="height: 300px"></div>
-      <div id="float-lyric"></div>
-      <div id="pitchart" style="height: 300px"></div>
-    </div>
+      </div>
+      <input type="submit" value="ダウンロード">
+    </form>
+    <form action="">
+      <select name="select_rule">
+      {% for r in rules %}
+        {% ifequal forloop.counter0 0 %}
+        <option selected="selected" value="{{ r.rule_id }}">{{ r.name }}</option>
+        {% else %}
+        <option value="{{ r.rule_id }}"/>{{ r.name }}</option>
+        {% endifequal %}
+      {% endfor %}
+      </select>
+    </form>
+    <div id="dynchart" style="height: 300px"></div>
+    <div id="float-lyric"></div>
+    <div id="pitchart" style="height: 300px"></div>
   </body>
 </html>

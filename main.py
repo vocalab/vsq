@@ -23,42 +23,36 @@ class ParserPage(webapp.RequestHandler):
         data = self.request.get('file')
         file_name = self.request.body_file.vars['file'].filename
         editor = VSQEditor(binary = data)
-        lyrics = editor.anotes.lyrics
-        rules = [zuii_rule, san_rule]
-        output_rules = []
+        rules = [zuii_rule, san_rule, port_rule, n_accent_rule]
 
-        for r in rules:
-            before_index = 0
-            candidate_keys = []
-            candidates = editor.get_rule_cands(r)
-            for value in sorted(candidates, key=lambda x:x['s_index']):
-                candidate_keys.append(value['id'])
-            output_rules.append({'keys':candidate_keys, 'name':r['name'], 'key': r['rule_id']})
-
-        memcache.set_multi({ 'editor': editor,
-            'name': file_name },
-            key_prefix='vsq_', time=3600)
+        cand_ids = [c['id'] for c in editor.get_rule_cands(*rules)]
+        memcache.set_multi(
+                {"editor": editor, "name": file_name},
+                key_prefix="vsq_",
+                time=3600
+                )
         template_values = {
-            'rules': output_rules,
-            'vsq_length': editor.end_time - editor.start_time
-            }
+                'cand_ids': cand_ids,
+                'rules': rules,
+                'vsq_length': editor.end_time - editor.start_time
+                }
         path = os.path.join(os.path.dirname(__file__), 'parse.html')
         self.response.out.write(template.render(path, template_values))
 
 class AppliedLyricJSON(webapp.RequestHandler):
     def get(self):
-        editor = memcache.get('vsq_editor')
-        candidates = editor.get_rule_cands(zuii_rule)
-        candidates.extend(editor.get_rule_cands(san_rule))
+        editor = memcache.get("vsq_editor")
+        rules = [zuii_rule, san_rule, port_rule, n_accent_rule]
+        candidates = editor.get_rule_cands(*rules)
+
         anote_list = []
         for a in editor.anotes:
-            anote_for_json = {'lyric': a.lyric.encode('utf-8'),
-                              'start_time': a.start,
-                              'length': a.length,
-                              'rules': []}
-            for c in candidates:
-                if a in c['anotes']:
-                    anote_for_json['rules'].append({'name': c['rule']['name'], 'id': c['id']})
+            rules_for_json = [{"name": c["rule"]["name"], "id": c["id"]}
+                        for c in candidates if a in c["anotes"]]
+            anote_for_json = {"lyric": a.lyric.encode('utf-8'),
+                              "start_time": a.start,
+                              "length": a.length,
+                              "rules": rules_for_json}
             anote_list.append(anote_for_json)
 
         self.response.content_type = 'application/json'
@@ -66,21 +60,24 @@ class AppliedLyricJSON(webapp.RequestHandler):
 
 class AppliedVsqJSON(webapp.RequestHandler):
     def post(self):
-        editor = memcache.get('vsq_editor')
-        file_name = memcache.get('vsq_name')
-        candidates = editor.get_rule_cands(zuii_rule)
-        candidates.extend(editor.get_rule_cands(san_rule))
-        select_ids = self.request.get_all('rule')
+        editor = memcache.get("vsq_editor")
+        file_name = memcache.get("vsq_name")
+        rules = [zuii_rule, san_rule, port_rule, n_accent_rule]
+        cands = editor.get_rule_cands(*rules)
+        select_ids = self.request.get_all("rule")
 
-        logging.info(str(candidates))
-        for c in candidates:
+        for c in cands:
             if c['id'] in select_ids:
                 editor.apply_rule(c)
             else:
                 editor.unapply_rule(c)
 
-        memcache.replace_multi({ 'editor': editor,
-            'name': file_name }, time=3600, key_prefix='vsq_')
+        memcache.replace_multi(
+                { "editor": editor,"name": file_name },
+                time=3600,
+                key_prefix="vsq_"
+                )
+
         dyn_list = [[p['time'],p['value']] for p in editor.get_dynamics_curve()]
         pit_list = [[p['time'],p['value']] for p in editor.get_pitch_curve()]
         self.response.content_type = 'application/json'
