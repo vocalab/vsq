@@ -1,18 +1,26 @@
 $(document).ready(function(){
     $("body").css({width: vsq_length / 10 + 200 + "px"});
+    $("#main").css({width: vsq_length / 10 + 200 + "px"});
     var dynChart = new Highcharts.Chart({
         chart: {
             renderTo: 'dynchart',
-            defaultSeriesType: 'area',
-            zoomType: 'x',
+        defaultSeriesType: 'area',
+        zoomType: 'x',
         },
         title: {
             text: "dynamics curve"
         },
+        xAxis: {
+            events: {
+                setExtremes: function(e){
+                    zoomLyric(e.min, e.max);
+                }
+            }
+        },
         yAxis: {
-        	title: {
-        		text: 'dynamics'
-        	},
+            title: {
+                text: 'dynamics'
+            },
             max: 128,
             min: 0
         },
@@ -25,8 +33,8 @@ $(document).ready(function(){
                     linearGradient: [0, 0, 0, 300],
                     stops: [
                         [0, Highcharts.getOptions().colors[0]],
-                        [1, 'rgba(2,0,0,0)']
-                    ]
+                    [1, 'rgba(2,0,0,0)']
+                        ]
                 },
                 lineWidth: 1,
                 marker: {
@@ -50,26 +58,26 @@ $(document).ready(function(){
             }
         },
         series:[{
-        	name: 'dynamics',
+            name: 'dynamics',
             data: []
         }]
     });
     var pitChart = new Highcharts.Chart({
         chart: {
             renderTo: 'pitchart',
-            defaultSeriesType: 'area',
-            zoomType: 'x',
+        defaultSeriesType: 'area',
+        zoomType: 'x',
         },
         colors: ['#AA4643'],
         title: {
             text: "pitch curve"
         },
         yAxis: {
-        	title: {
-        		text: 'pitch'
-        	},
-            max: 30000,
-            min: -30000
+            title: {
+                text: 'pitch'
+            },
+        max: 30000,
+        min: -30000
         },
         legend: {
             enabled :false,
@@ -80,8 +88,8 @@ $(document).ready(function(){
                     linearGradient: [0, 0, 0, 300],
                     stops: [
                         [0, Highcharts.getOptions().colors[1]],
-                        [1, 'rgba(0,2,0,0)']
-                    ]
+                    [1, 'rgba(0,2,0,0)']
+                        ]
                 },
                 lineWidth: 1,
                 marker: {
@@ -101,7 +109,7 @@ $(document).ready(function(){
                 }
             },
             series: {
-            	name: 'pitch',
+                name: 'pitch',
                 step: true
             }
         },
@@ -110,8 +118,19 @@ $(document).ready(function(){
         }]
     });
 
+    var zoomLyric = function(min, max){ //未完成
+        range = (max - min) / 10;
+        $(".lyric").each(function (){
+            $(this).width($(this).width() * ($("body").width() / range));
+        });
+
+        graphOffset = $(".highcharts-series > path").offset().left;
+        $(".anote").each(function (){
+            $(this).css({left: ($(this).offset().left - graphOffset) * ($("body").width() / range) + graphOffset + "px"});
+        });
+    }
     var changeHighlight = function(obj){
-        var index = $(obj).parent().find("input:checkbox").index(obj);
+        var index = $(obj).parent(".cand-inputs").find("input:checkbox").index(obj);
         if(index !== -1){
             var cand = $(".cand" + $(obj).val());
             if($(obj).attr("checked") === "checked"){
@@ -142,7 +161,7 @@ $(document).ready(function(){
                 dynChart.series[0].setData(dataset.dyn);
                 pitChart.series[0].setData(dataset.pit);
             },
-        url: "/appliedvsq"
+            url: "/appliedvsq"
         };
         $("#rule-form").ajaxSubmit(options);
     };

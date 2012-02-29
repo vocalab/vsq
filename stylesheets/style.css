@@ -9,8 +9,7 @@ header h1{
   color: #fff;
 }
 #main {
-  width: 400px;
-  padding-left: 20px;
+  overflow: hidden;
 }
 .anote {
   z-index: 2;
