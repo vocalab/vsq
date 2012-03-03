@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+from math import *
 from tools import *
 from vsq_rules import *
 from normaltrack import *
@@ -322,6 +323,38 @@ class VSQEditor(object):
                 anotes[target].length -= conflict(note, anotes[next])
         self.end_time = max(anotes[-1].end, self.end_time)
 
+    def split_note(self, anote, ratio):
+        """ノートを分割する
+        Args:
+            anote: 分割したいノート
+            ratio: 分割点の先頭からの割合
+        Returns:
+            True: 成功
+            False: 失敗
+        """
+        if not 0 < ratio < 1:
+            return False
+
+        # ノートが被る可能性があるため floor で切り捨て
+        pos = floor(anote.start + anote.get_length() * ratio)
+
+        ret = Anote(**{
+            "time": pos,
+            "length": anote.get_end() - pos,
+            "vibrato": None,
+            "note": anote.note,
+            "dynamics": anote.dynamics
+            })
+
+        if re.compile("[aiMeo]").match(anote.get_phonetic()[-1]):
+            ret.set_lyric("-")
+            ret.set_phonetic(anote.get_phonetic()[-1])
+        else:
+            ret.set_lyric(anote.get_lyric())
+            ret.set_phonetic(anote.get_phonetic())
+
+        self.add_note(ret, force=True)
+        return True
 
 '''
 テストコード:
@@ -337,9 +370,8 @@ class VSQEditor(object):
 '''
 if __name__ == '__main__':
     editor = VSQEditor(binary=open('test.vsq', 'r').read())
-    #enable = [8]
-    #editor = VSQEditor(binary=open('thyla.vsq', 'r').read())
-    enable = [1,2,3,4,5,6,7,8]
+    enable = [10]
+    
 
     #1.音符情報、dynamics,pitchbendカーブを表示
     if 1 in enable:
@@ -397,16 +429,34 @@ if __name__ == '__main__':
         editor.add_note(Anote(**note))
         print editor.end_time
 
-    #3.編集結果をunparseして書きこむ
-    if 3 in enable:
-        editor.unparse('out.vsq')
     
     #9.ポルタメントを表示する（仮）
     if 9 in enable:
     	i = 0
     	porta = []
     	anotes = editor.get_anotes()
-    	while i<=107:
-    		i = i+1
-    		porta.append(anotes[i].options['PMbPortamentoUse']);
-		print porta
+    	while i <= 107:
+            i = i+1
+            porta.append(anotes[i].options['PMbPortamentoUse']);
+            print porta
+
+    #10.ノート分割テスト
+    if 10 in enable:
+        anotes = editor.anotes
+        print "-----before split-----"
+        for i in range(2):
+            print "anotes[%d]" % i
+            print "%6s: %d" % ("start", anotes[i].get_start())
+            print "%6s: %d" % ("length", anotes[i].get_length())
+            print "%6s: %d\n" % ("end", anotes[i].get_end())
+        editor.split_note(editor.anotes[0], 0.3)
+        print "-----after split(split anotes[0])-----"
+        for i in range(3):
+            print "anotes[%d]" % i
+            print "%6s: %d" % ("start", anotes[i].get_start())
+            print "%6s: %d" % ("length", anotes[i].get_length())
+            print "%6s: %d\n" % ("end", anotes[i].get_end())
+
+    #3.編集結果をunparseして書きこむ
+    if 3 in enable:
+        editor.unparse('out.vsq')
