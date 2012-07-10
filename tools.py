@@ -69,7 +69,7 @@ def dtime2binary(dtime):
 #歌詞=>発音記号の変換テーブル
 phonetic_table = {
         u"あ": u"a", u"い": u"i", u"う": u"M", u"え": u"e", u"お": u"o",
-        u"か": u"k a", u"き": u"k i", u"く": u"k M", u"け": u"k e", u"こ": "k o",
+        u"か": u"k a", u"き": u"k' i", u"く": u"k M", u"け": u"k e", u"こ": "k o",
         u"さ": u"s a", u"し": u"S i", u"す": u"s M", u"せ": u"s e", u"そ": "s o",
         u"た": u"t a", u"ち": u"tS i", u"つ": u"ts M", u"て": u"t e", u"と": "t o",
         u"な": u"n a", u"に": u"J i", u"ぬ": u"n M", u"ね": u"n e", u"の": u"n o",
@@ -109,7 +109,7 @@ lyric_table = dict(zip(phonetic_table.values(), phonetic_table.keys()))
 #ローマ字の歌詞が入力されたとき用に更新
 phonetic_table.update({
     u"a": u"a", u"i": u"i", u"u": u"M", u"e": u"e", u"o": u"o",  # あ行
-    u"ka": u"k a", u"ca": u"k a", u"ki": u"k i", u"ku": u"k M", u"cu": u"k M", u"qu": u"k M", u"ke": u"k e", u"ko": u"k o", u"co": "k o",  # か行
+    u"ka": u"k a", u"ca": u"k a", u"ki": u"k' i", u"ku": u"k M", u"cu": u"k M", u"qu": u"k M", u"ke": u"k e", u"ko": u"k o", u"co": "k o",  # か行
     u"sa": u"s a", u"si": u"s i", u"shi": u"s i", u"ci": u"s i", u"su": u"s M", u"se": u"s e", u"ce": u"s e", u"so": u"s o",  # さ行
     u"ta": u"t a", u"ti": u"tS i", u"tu": u"ts M", u"te": u"t e", u"to": u"t o",  # た行
     u"na": u"n a", u"ni": u"J i", u"nu": u"n M", u"ne": u"n e", u"no": u"n o",  # な行
